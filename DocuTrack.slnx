@@ -1,0 +1,6 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="DocuTrack.Console/DocuTrack.Console.csproj" />
+    <Project Path="DocuTrack.Core/DocuTrack.Core.csproj" />
+  </Folder>
+</Solution>
