@@ -44,5 +44,10 @@ namespace DocuTrack.Core.Services
         {
             return _documentRepository.GetAll();
         }
+
+        public Document? GetDocumentById(Guid id)
+        {
+            return _documentRepository.GetById(id);
+        }
     }
 }

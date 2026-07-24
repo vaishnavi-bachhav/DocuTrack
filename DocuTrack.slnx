@@ -1,5 +1,6 @@
 <Solution>
   <Folder Name="/src/">
+    <Project Path="DocuTrack.Api/DocuTrack.Api.csproj" Id="20f955b4-b7f7-4131-8769-c000b884a49e" />
     <Project Path="DocuTrack.Console/DocuTrack.Console.csproj" />
     <Project Path="DocuTrack.Core/DocuTrack.Core.csproj" />
   </Folder>

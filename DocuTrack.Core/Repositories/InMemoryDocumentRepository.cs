@@ -4,7 +4,7 @@ namespace DocuTrack.Core.Repositories
 {
     public sealed class InMemoryDocumentRepository : IDocumentRepository // sealed class to prevent inheritance
     {
-        private readonly List<Document> _documents = [];
+        private readonly List<Document> _documents = new List<Document>();
 
         public Document Add(Document document)
         {
@@ -16,6 +16,11 @@ namespace DocuTrack.Core.Repositories
         public IReadOnlyCollection<Document> GetAll()
         {
             return _documents.ToList();
+        }
+
+        public Document? GetById(Guid id)
+        {
+            return _documents.FirstOrDefault(d => d.Id == id);
         }
     }
 }

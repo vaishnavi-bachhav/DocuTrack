@@ -1,0 +1,121 @@
+﻿using DocuTrack.Api.Contracts.Responses;
+using DocuTrack.Core.Enums;
+using DocuTrack.Core.Services;
+using Microsoft.AspNetCore.Mvc;
+using DocuTrack.Core.Models;
+using DocuTrack.Api.Contracts.Requests;
+using DocuTrack.Core.Requests;
+
+namespace DocuTrack.Api.Controllers
+{
+    [Route("api/[controller]")]
+    [ApiController]
+    public class DocumentsController : ControllerBase
+    {
+        private readonly DocumentService _documentService;
+        public DocumentsController(DocumentService documentService)
+        {
+            _documentService = documentService ?? throw new ArgumentNullException(nameof(documentService));
+        }
+
+        [HttpPost]
+        public ActionResult<DocumentResponse> CreateDocument([FromBody] CreateDocumentApiRequest request)
+        {
+            if (request.DocumentType == DocumentType.Unknown)
+            {
+                ModelState.AddModelError(
+                    nameof(request.DocumentType),
+                    "Document type is required.");
+            }
+
+            if (request.Department == Department.Unknown)
+            {
+                ModelState.AddModelError(
+                    nameof(request.Department),
+                    "Department is required.");
+            }
+
+            if (string.IsNullOrWhiteSpace(request.Title))
+            {
+                ModelState.AddModelError(
+                    nameof(request.Title),
+                    "Title cannot contain only whitespace.");
+            }
+
+            if (string.IsNullOrWhiteSpace(request.Owner))
+            {
+                ModelState.AddModelError(
+                    nameof(request.Owner),
+                    "Owner cannot contain only whitespace.");
+            }
+
+            if (!ModelState.IsValid)
+            {
+                return ValidationProblem(ModelState);
+            }
+            var createDocumentRequest = new CreateDocumentRequest
+            {
+                Title = request.Title.Trim(),
+                Description = string.IsNullOrWhiteSpace(request.Description) 
+                            ? null 
+                            : request.Description.Trim(),
+                DocumentType = request.DocumentType,
+                Department = request.Department,
+                Owner = request.Owner.Trim(),
+            };
+            Document document = _documentService.CreateDocument(createDocumentRequest);
+            DocumentResponse response = MapToResponse(document);
+
+            return CreatedAtAction(
+                nameof(GetDocumentById),
+                new { id = document.Id },
+                response);
+        }
+
+        [HttpGet]
+        public ActionResult<IReadOnlyCollection<DocumentResponse>> GetAllDocuments()
+        {
+            IReadOnlyCollection<DocumentResponse> documents = _documentService.GetAllDocuments()
+                .Select(MapToResponse)
+                .ToList();
+
+            return Ok(documents);
+        }
+
+        [HttpGet("{id:guid}")]
+        public ActionResult<DocumentResponse> GetDocumentById(Guid id)
+        {
+            Document? document = _documentService.GetDocumentById(id);
+
+            if (document is null)
+            {
+                return NotFound(new ProblemDetails
+                {
+                    Title = "Document not found",
+                    Detail = $"No document was found with ID '{id}'.",
+                    Status = StatusCodes.Status404NotFound
+                });
+            }
+
+            return Ok(MapToResponse(document));
+        }
+
+        private static DocumentResponse MapToResponse(Document document)
+        {
+            return new DocumentResponse
+            {
+                Id = document.Id,
+                DocumentNumber = document.DocumentNumber,
+                Title = document.Title,
+                Description = document.Description,
+                Type = document.Type,
+                Department = document.Department,
+                Owner = document.Owner,
+                Status = document.Status,
+                CreatedDate = document.CreatedAt,
+                LastUpdatedDate = document.LastUpdatedAt,
+                Version = document.Version
+            };
+        }
+    }
+}

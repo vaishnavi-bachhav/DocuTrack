@@ -1,0 +1,113 @@
+@DocuTrack.Api_HostAddress = http://localhost:5257
+
+### Get all documents
+
+GET {{DocuTrack.Api_HostAddress}}/api/documents
+Accept: application/json
+
+###
+
+### Create a valid document
+
+POST {{DocuTrack.Api_HostAddress}}/api/documents
+Content-Type: application/json
+Accept: application/json
+
+{
+  "title": "Supplier Agreement",
+  "description": "Annual supplier agreement",
+  "documentType": "Contract",
+  "department": "Purchasing",
+  "owner": "Vaishnavi Bachhav"
+}
+
+###
+
+### Get document by ID
+# Replace the GUID below with the ID returned by the POST request.
+
+GET {{DocuTrack.Api_HostAddress}}/api/documents/11111111-1111-1111-1111-111111111111
+Accept: application/json
+
+###
+
+### Create document with missing title
+# Expected result: 400 Bad Request
+
+POST {{DocuTrack.Api_HostAddress}}/api/documents
+Content-Type: application/json
+Accept: application/json
+
+{
+  "description": "Missing title test",
+  "documentType": "Contract",
+  "department": "Purchasing",
+  "owner": "Vaishnavi Bachhav"
+}
+
+###
+
+### Create document with invalid document type
+# Expected result: 400 Bad Request
+
+POST {{DocuTrack.Api_HostAddress}}/api/documents
+Content-Type: application/json
+Accept: application/json
+
+{
+  "title": "Enum validation test",
+  "description": "Invalid document type",
+  "documentType": "InvalidType",
+  "department": "Purchasing",
+  "owner": "Vaishnavi Bachhav"
+}
+
+###
+
+### Create document with invalid department
+# Expected result: 400 Bad Request
+
+POST {{DocuTrack.Api_HostAddress}}/api/documents
+Content-Type: application/json
+Accept: application/json
+
+{
+  "title": "Invalid department test",
+  "description": "Invalid department",
+  "documentType": "Contract",
+  "department": "InvalidDepartment",
+  "owner": "Vaishnavi Bachhav"
+}
+
+###
+
+### Create document with whitespace-only title
+# Expected result: 400 Bad Request
+
+POST {{DocuTrack.Api_HostAddress}}/api/documents
+Content-Type: application/json
+Accept: application/json
+
+{
+  "title": "   ",
+  "description": "Whitespace title test",
+  "documentType": "Contract",
+  "department": "Purchasing",
+  "owner": "Vaishnavi Bachhav"
+}
+
+###
+
+### Create document with missing owner
+# Expected result: 400 Bad Request
+
+POST {{DocuTrack.Api_HostAddress}}/api/documents
+Content-Type: application/json
+Accept: application/json
+
+{
+  "title": "Missing owner test",
+  "description": "Owner is missing",
+  "documentType": "Contract",
+  "department": "Purchasing"
+}
