@@ -4,8 +4,8 @@ namespace DocuTrack.Core.Repositories
 {
     public interface IDocumentRepository
     {
-        public Document Add(Document document);
-        public IReadOnlyCollection<Document> GetAll();
-        public Document? GetById(Guid id);
+        public Task<Document> AddAsync(Document document, CancellationToken cancellationToken = default);
+        public Task<IReadOnlyList<Document>> GetAllAsync(CancellationToken cancellationToken = default);
+        public Task<Document?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default);
     }
 }

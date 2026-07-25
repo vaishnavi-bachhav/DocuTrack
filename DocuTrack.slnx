@@ -3,5 +3,6 @@
     <Project Path="DocuTrack.Api/DocuTrack.Api.csproj" Id="20f955b4-b7f7-4131-8769-c000b884a49e" />
     <Project Path="DocuTrack.Console/DocuTrack.Console.csproj" />
     <Project Path="DocuTrack.Core/DocuTrack.Core.csproj" />
+    <Project Path="DocuTrack.Infrastructure/DocuTrack.Infrastructure.csproj" Id="66889e53-e9f5-43e6-96fe-ed4b4b0166c2" />
   </Folder>
 </Solution>

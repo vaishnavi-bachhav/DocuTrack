@@ -4,7 +4,7 @@ using DocuTrack.Console.Menus;
 using DocuTrack.Core.Models;
 using DocuTrack.Core.Repositories;
 using DocuTrack.Core.Services;
-
+/*
 var documentRepository = new InMemoryDocumentRepository();
 var documentService = new DocumentService(documentRepository);
 var documentInputHandler = new DocumentInputHandler(documentService);
@@ -33,3 +33,4 @@ while (isRunning)
             break;
     }
 }
+*/

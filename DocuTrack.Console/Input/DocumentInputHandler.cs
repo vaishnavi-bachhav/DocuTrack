@@ -6,6 +6,7 @@ using DocuTrack.Core.Services;
 
 namespace DocuTrack.Console.Input
 {
+    /*
     public class DocumentInputHandler
     {
         private readonly DocumentService _documentService;
@@ -140,4 +141,5 @@ namespace DocuTrack.Console.Input
                 : input;
         }
     }
+    */
 }

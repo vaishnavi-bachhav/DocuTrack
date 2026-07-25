@@ -7,23 +7,23 @@ namespace DocuTrack.Core.Services
     public sealed class DocumentService
     {
         private readonly IDocumentRepository _documentRepository;
-        private int _nextDocumentNumber = 1;
 
         public DocumentService(IDocumentRepository documentRepository)
         {
             _documentRepository = documentRepository ?? throw new ArgumentNullException(nameof(documentRepository));
         }
 
-        public Document CreateDocument(CreateDocumentRequest request)
+        public async Task<Document> CreateDocumentAsync(CreateDocumentRequest request, CancellationToken cancellationToken = default)
         {
             ArgumentNullException.ThrowIfNull(request, nameof(request));
 
-            DateTimeOffset now = DateTimeOffset.Now;
+            DateTimeOffset now = DateTimeOffset.UtcNow;
+            string documentNumber = $"DOC-{Guid.NewGuid().ToString("N")[..8].ToUpperInvariant()}";
 
             var document = new Document
             {
                 Id = Guid.NewGuid(),
-                DocumentNumber = $"DOC-{_nextDocumentNumber:D4}",
+                DocumentNumber = documentNumber,
                 Title = request.Title,
                 Description = request.Description,
                 Type = request.DocumentType,
@@ -34,20 +34,17 @@ namespace DocuTrack.Core.Services
                 LastUpdatedAt = now,
                 Version = 1
             };
-            _documentRepository.Add(document);
-            _nextDocumentNumber++;
-
-            return document;
+            return await _documentRepository.AddAsync(document, cancellationToken);
         }
 
-        public IReadOnlyCollection<Document> GetAllDocuments()
+        public async Task<IReadOnlyList<Document>> GetAllDocumentsAsync(CancellationToken cancellationToken = default)
         {
-            return _documentRepository.GetAll();
+            return await _documentRepository.GetAllAsync(cancellationToken);
         }
 
-        public Document? GetDocumentById(Guid id)
+        public async Task<Document?> GetDocumentByIdAsync(Guid id, CancellationToken cancellationToken = default)
         {
-            return _documentRepository.GetById(id);
+            return await _documentRepository.GetByIdAsync(id, cancellationToken);
         }
     }
 }

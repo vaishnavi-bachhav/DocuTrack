@@ -1,5 +1,9 @@
 using DocuTrack.Core.Repositories;
 using System.Text.Json.Serialization;
+using DocuTrack.Infrastructure.Persistence;
+using Microsoft.EntityFrameworkCore;
+using DocuTrack.Infrastructure.Repositories;
+using DocuTrack.Core.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -14,8 +18,17 @@ builder.Services.AddControllers().AddJsonOptions(options =>
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
 
-builder.Services.AddSingleton<IDocumentRepository, InMemoryDocumentRepository>();
-builder.Services.AddScoped<DocuTrack.Core.Services.DocumentService>();
+string connectionString = builder.Configuration.GetConnectionString("DocuTrackDb")
+        ?? throw new InvalidOperationException(
+        "Connection string 'DocuTrackDb' was not found.");
+
+builder.Services.AddDbContext<DocuTrackDbContext>(options =>
+{
+    options.UseSqlServer(connectionString);
+});
+
+builder.Services.AddScoped<IDocumentRepository, EfDocumentRepository>();
+builder.Services.AddScoped<DocumentService>();
 
 var app = builder.Build();
 

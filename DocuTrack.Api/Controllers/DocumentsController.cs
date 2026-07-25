@@ -19,7 +19,7 @@ namespace DocuTrack.Api.Controllers
         }
 
         [HttpPost]
-        public ActionResult<DocumentResponse> CreateDocument([FromBody] CreateDocumentApiRequest request)
+        public async Task<ActionResult<DocumentResponse>> CreateDocument([FromBody] CreateDocumentApiRequest request, CancellationToken cancellationToken)
         {
             if (request.DocumentType == DocumentType.Unknown)
             {
@@ -63,7 +63,7 @@ namespace DocuTrack.Api.Controllers
                 Department = request.Department,
                 Owner = request.Owner.Trim(),
             };
-            Document document = _documentService.CreateDocument(createDocumentRequest);
+            Document document = await _documentService.CreateDocumentAsync(createDocumentRequest, cancellationToken);
             DocumentResponse response = MapToResponse(document);
 
             return CreatedAtAction(
@@ -73,19 +73,16 @@ namespace DocuTrack.Api.Controllers
         }
 
         [HttpGet]
-        public ActionResult<IReadOnlyCollection<DocumentResponse>> GetAllDocuments()
+        public async Task<ActionResult<IReadOnlyCollection<DocumentResponse>>> GetAllDocuments(CancellationToken cancellationToken)
         {
-            IReadOnlyCollection<DocumentResponse> documents = _documentService.GetAllDocuments()
-                .Select(MapToResponse)
-                .ToList();
-
+            IReadOnlyCollection<DocumentResponse> documents = (await _documentService.GetAllDocumentsAsync(cancellationToken)).Select(MapToResponse).ToList();
             return Ok(documents);
         }
 
         [HttpGet("{id:guid}")]
-        public ActionResult<DocumentResponse> GetDocumentById(Guid id)
+        public async Task<ActionResult<DocumentResponse>> GetDocumentById(Guid id, CancellationToken cancellationToken)
         {
-            Document? document = _documentService.GetDocumentById(id);
+            Document? document = await _documentService.GetDocumentByIdAsync(id, cancellationToken);
 
             if (document is null)
             {
@@ -102,6 +99,8 @@ namespace DocuTrack.Api.Controllers
 
         private static DocumentResponse MapToResponse(Document document)
         {
+            ArgumentNullException.ThrowIfNull(document, nameof(document));
+
             return new DocumentResponse
             {
                 Id = document.Id,
