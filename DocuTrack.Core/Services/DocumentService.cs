@@ -17,13 +17,13 @@ namespace DocuTrack.Core.Services
         {
             ArgumentNullException.ThrowIfNull(request, nameof(request));
 
+            long nextNumber = await _documentRepository.GetNextDocumentNumberAsync(cancellationToken);
             DateTimeOffset now = DateTimeOffset.UtcNow;
-            string documentNumber = $"DOC-{Guid.NewGuid().ToString("N")[..8].ToUpperInvariant()}";
 
             var document = new Document
             {
                 Id = Guid.NewGuid(),
-                DocumentNumber = documentNumber,
+                DocumentNumber = $"DOC-{nextNumber:D6}",
                 Title = request.Title,
                 Description = request.Description,
                 Type = request.DocumentType,

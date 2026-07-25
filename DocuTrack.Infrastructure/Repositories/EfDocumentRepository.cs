@@ -30,5 +30,37 @@ namespace DocuTrack.Infrastructure.Repositories
         {
             return await _context.Documents.AsNoTracking().FirstOrDefaultAsync(d => d.Id == id, cancellationToken);
         }
+
+        public async Task<long> GetNextDocumentNumberAsync(CancellationToken cancellationToken = default)
+        {
+            var connection = _context.Database.GetDbConnection();
+
+            bool shouldCloseConnection = connection.State != System.Data.ConnectionState.Open;
+            
+            if (shouldCloseConnection)
+            {
+                await connection.OpenAsync(cancellationToken);
+            }
+            try
+            {
+                await using var command = connection.CreateCommand();
+                command.CommandText = "SELECT NEXT VALUE FOR dbo.DocumentNumberSequence";
+
+                object? result = await command.ExecuteScalarAsync(cancellationToken);
+
+                if (result is null || result == DBNull.Value)
+                {
+                    throw new InvalidOperationException("Failed to retrieve the next document number from the database.");
+                }
+                return Convert.ToInt64(result);
+            }
+            finally
+            {
+                if (shouldCloseConnection)
+                {
+                    await connection.CloseAsync();
+                }
+            }
+        }
     }
 }

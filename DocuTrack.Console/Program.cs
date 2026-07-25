@@ -4,6 +4,8 @@ using DocuTrack.Console.Menus;
 using DocuTrack.Core.Models;
 using DocuTrack.Core.Repositories;
 using DocuTrack.Core.Services;
+
+Console.WriteLine("Welcome to DocuTrack!");
 /*
 var documentRepository = new InMemoryDocumentRepository();
 var documentService = new DocumentService(documentRepository);
