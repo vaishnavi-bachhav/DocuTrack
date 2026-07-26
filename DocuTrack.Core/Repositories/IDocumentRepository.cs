@@ -9,5 +9,6 @@ namespace DocuTrack.Core.Repositories
         Task<Document?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default);
         Task<long> GetNextDocumentNumberAsync(CancellationToken cancellationToken = default);
         Task<Document?> UpdateAsync(Document document, CancellationToken cancellationToken = default);
+        Task DeleteAsync(Document document, CancellationToken cancellationToken = default);
     }
 }

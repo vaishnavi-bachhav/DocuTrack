@@ -1,5 +1,6 @@
 ﻿using DocuTrack.Core.Models;
 using DocuTrack.Core.Repositories;
+using DocuTrack.Core.Requests;
 using DocuTrack.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 
@@ -69,6 +70,13 @@ namespace DocuTrack.Infrastructure.Repositories
             _context.Documents.Update(document);
             await _context.SaveChangesAsync(cancellationToken);
             return document;
+        }
+
+        public async Task DeleteAsync(Document document, CancellationToken cancellationToken = default)
+        {
+            ArgumentNullException.ThrowIfNull(document);
+            _context.Documents.Remove(document);
+            await _context.SaveChangesAsync(cancellationToken);
         }
     }
 }

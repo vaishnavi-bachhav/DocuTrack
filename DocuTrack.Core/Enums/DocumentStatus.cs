@@ -2,6 +2,7 @@
 {
     public enum DocumentStatus
     {
+        Unknown,
         Draft,
         Uploaded,
         UnderReview,

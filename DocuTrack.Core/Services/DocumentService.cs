@@ -1,6 +1,8 @@
 ﻿using DocuTrack.Core.Models;
 using DocuTrack.Core.Repositories;
 using DocuTrack.Core.Requests;
+using DocuTrack.Core.Enums;
+using DocuTrack.Core.Exceptions;
 
 namespace DocuTrack.Core.Services
 {
@@ -10,12 +12,13 @@ namespace DocuTrack.Core.Services
 
         public DocumentService(IDocumentRepository documentRepository)
         {
-            _documentRepository = documentRepository ?? throw new ArgumentNullException(nameof(documentRepository));
+            ArgumentNullException.ThrowIfNull(documentRepository);
+            _documentRepository = documentRepository;
         }
 
         public async Task<Document> CreateDocumentAsync(CreateDocumentRequest request, CancellationToken cancellationToken = default)
         {
-            ArgumentNullException.ThrowIfNull(request, nameof(request));
+            ArgumentNullException.ThrowIfNull(request);
 
             long nextNumber = await _documentRepository.GetNextDocumentNumberAsync(cancellationToken);
             DateTimeOffset now = DateTimeOffset.UtcNow;
@@ -49,7 +52,7 @@ namespace DocuTrack.Core.Services
 
         public async Task<Document?> UpdateDocumentAsync(Guid id, UpdateDocumentRequest request, CancellationToken cancellationToken = default)
         {
-            ArgumentNullException.ThrowIfNull(request, nameof(request));
+            ArgumentNullException.ThrowIfNull(request);
             Document? existingDocument = await _documentRepository.GetByIdAsync(id, cancellationToken);
             if (existingDocument is null)
             {
@@ -63,6 +66,59 @@ namespace DocuTrack.Core.Services
             existingDocument.LastUpdatedAt = DateTimeOffset.UtcNow;
             existingDocument.Version++;
             return await _documentRepository.UpdateAsync(existingDocument, cancellationToken);
+        }
+
+        public async Task<Document?> ChangeDocumentStatusAsync(ChangeDocumentStatusRequest request, CancellationToken cancellationToken = default)
+        {
+            ArgumentNullException.ThrowIfNull(request);
+
+            Document? existingDocument = await _documentRepository.GetByIdAsync(request.DocumentId, cancellationToken);
+            if (existingDocument is null)
+            {
+                return null;
+            }
+
+            if (!IsValidStatusTransition(existingDocument.Status, request.NewStatus))
+            {
+                throw new InvalidDocumentStatusTransitionException(existingDocument.Status, request.NewStatus);
+            }
+            
+            existingDocument.Status = request.NewStatus;
+            existingDocument.LastUpdatedAt = DateTimeOffset.UtcNow;
+            existingDocument.Version++;
+            return await _documentRepository.UpdateAsync(existingDocument, cancellationToken);
+        }
+
+        public async Task<bool> DeleteDocumentAsync(Guid id, CancellationToken cancellationToken = default)
+        {
+            Document? existingDocument = await _documentRepository.GetByIdAsync(id, cancellationToken);
+            if (existingDocument is null)
+            {
+                return false;
+            }
+
+            bool canDelete = existingDocument.Status is DocumentStatus.Draft or DocumentStatus.Rejected;
+            if(!canDelete)
+            {
+                throw new InvalidOperationException($"Document with ID {id} cannot be deleted because it is in status {existingDocument.Status}.");
+            }
+            await _documentRepository.DeleteAsync(existingDocument, cancellationToken);
+            return true;
+        }
+
+        private static bool IsValidStatusTransition(DocumentStatus currentStatus, DocumentStatus newStatus)
+        {
+            return (currentStatus, newStatus) switch
+            {
+                (DocumentStatus.Draft, DocumentStatus.Uploaded) => true,
+                (DocumentStatus.Uploaded, DocumentStatus.UnderReview) => true,
+                (DocumentStatus.UnderReview, DocumentStatus.PendingApproval) => true,
+                (DocumentStatus.PendingApproval, DocumentStatus.Approved) => true,
+                (DocumentStatus.PendingApproval, DocumentStatus.Rejected) => true,
+                (DocumentStatus.Rejected, DocumentStatus.Draft) => true,
+                (DocumentStatus.Approved, DocumentStatus.Archived) => true,
+                _ => false,
+            };
         }
     }
 }

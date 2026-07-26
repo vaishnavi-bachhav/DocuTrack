@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Mvc;
 using DocuTrack.Core.Models;
 using DocuTrack.Api.Contracts.Requests;
 using DocuTrack.Core.Requests;
+using DocuTrack.Core.Exceptions;
 
 namespace DocuTrack.Api.Controllers
 {
@@ -98,7 +99,7 @@ namespace DocuTrack.Api.Controllers
         }
 
         [HttpPut("{id:guid}")]
-        public async Task<ActionResult<DocumentResponse>> UpdateDocument(Guid id, [FromBody] UpdateDocumentRequest request, CancellationToken cancellationToken)
+        public async Task<ActionResult<DocumentResponse>> UpdateDocument(Guid id, [FromBody] UpdateDocumentApiRequest request, CancellationToken cancellationToken)
         {
             if (request.DocumentType == DocumentType.Unknown)
             {
@@ -148,7 +149,78 @@ namespace DocuTrack.Api.Controllers
             DocumentResponse? response = MapToResponse(document);
             return Ok(response);
         }
-        
+
+        [HttpPatch("{id:guid}/status")]
+        public async Task<ActionResult<DocumentResponse>> ChangeDocumentStatus(Guid id, [FromBody] ChangeDocumentStatusApiRequest request, CancellationToken cancellationToken)
+        {
+            if(request.NewStatus == DocumentStatus.Unknown)
+            {
+                ModelState.AddModelError(
+                    nameof(request.NewStatus),
+                    "New status is required.");
+
+                return ValidationProblem(ModelState);
+            }
+            try
+            {
+                Document? updateDocument = await _documentService.ChangeDocumentStatusAsync(new ChangeDocumentStatusRequest
+                {
+                    DocumentId = id,
+                    NewStatus = request.NewStatus
+                }, cancellationToken);
+
+                if (updateDocument is null)
+                {
+                    return NotFound(new ProblemDetails
+                    {
+                        Title = "Document not found",
+                        Detail = $"No document was found with ID '{id}'.",
+                        Status = StatusCodes.Status404NotFound
+                    });
+                }
+
+                return Ok(MapToResponse(updateDocument));
+            }
+            catch (InvalidDocumentStatusTransitionException exception)
+            {
+                return Conflict(new ProblemDetails
+                {
+                    Title = "Invalid document status transition",
+                    Detail = exception.Message,
+                    Status = StatusCodes.Status409Conflict  
+                });
+            }
+        }
+
+        [HttpDelete("{id:guid}")]
+        public async Task<ActionResult<bool>> DeleteDocument(Guid id, CancellationToken cancellationToken)
+        {
+            try
+            {
+                bool isDeleted = await _documentService.DeleteDocumentAsync(id, cancellationToken);
+
+                if(!isDeleted)
+                {
+                    return NotFound(new ProblemDetails
+                    {
+                        Title = "Document not found",
+                        Detail = $"No document was found with ID '{id}'.",
+                        Status = StatusCodes.Status404NotFound
+                    });
+                }
+
+                return NoContent();
+            }
+            catch (InvalidOperationException exception)
+            {
+                return Conflict(new ProblemDetails
+                {
+                    Title = "Document cannot be deleted",
+                    Detail = exception.Message,
+                    Status = StatusCodes.Status409Conflict
+                });
+            }
+        }
 
         private static DocumentResponse MapToResponse(Document document)
         {
