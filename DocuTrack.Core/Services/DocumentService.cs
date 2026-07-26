@@ -46,5 +46,23 @@ namespace DocuTrack.Core.Services
         {
             return await _documentRepository.GetByIdAsync(id, cancellationToken);
         }
+
+        public async Task<Document?> UpdateDocumentAsync(Guid id, UpdateDocumentRequest request, CancellationToken cancellationToken = default)
+        {
+            ArgumentNullException.ThrowIfNull(request, nameof(request));
+            Document? existingDocument = await _documentRepository.GetByIdAsync(id, cancellationToken);
+            if (existingDocument is null)
+            {
+                return null;
+            }
+            existingDocument.Title = request.Title;
+            existingDocument.Description = request.Description;
+            existingDocument.Type = request.DocumentType;
+            existingDocument.Department = request.Department;
+            existingDocument.Owner = request.Owner;
+            existingDocument.LastUpdatedAt = DateTimeOffset.UtcNow;
+            existingDocument.Version++;
+            return await _documentRepository.UpdateAsync(existingDocument, cancellationToken);
+        }
     }
 }

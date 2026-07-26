@@ -62,5 +62,13 @@ namespace DocuTrack.Infrastructure.Repositories
                 }
             }
         }
+
+        public async Task<Document?> UpdateAsync(Document document, CancellationToken cancellationToken = default)
+        {
+            ArgumentNullException.ThrowIfNull(document);
+            _context.Documents.Update(document);
+            await _context.SaveChangesAsync(cancellationToken);
+            return document;
+        }
     }
 }

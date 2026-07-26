@@ -97,6 +97,59 @@ namespace DocuTrack.Api.Controllers
             return Ok(MapToResponse(document));
         }
 
+        [HttpPut("{id:guid}")]
+        public async Task<ActionResult<DocumentResponse>> UpdateDocument(Guid id, [FromBody] UpdateDocumentRequest request, CancellationToken cancellationToken)
+        {
+            if (request.DocumentType == DocumentType.Unknown)
+            {
+                ModelState.AddModelError(
+                    nameof(request.DocumentType),
+                    "Document type is required.");
+            }
+
+            if (request.Department == Department.Unknown)
+            {
+                ModelState.AddModelError(
+                    nameof(request.Department),
+                    "Department is required.");
+            }
+
+            if (string.IsNullOrWhiteSpace(request.Title))
+            {
+                ModelState.AddModelError(
+                    nameof(request.Title),
+                    "Title cannot contain only whitespace.");
+            }
+            if (!ModelState.IsValid)
+            {
+                return ValidationProblem(ModelState);
+            }
+            var updateDocumentRequest = new UpdateDocumentRequest
+            {
+                Title = request.Title.Trim(),
+                Description = string.IsNullOrWhiteSpace(request.Description)
+                            ? null
+                            : request.Description.Trim(),
+                DocumentType = request.DocumentType,
+                Department = request.Department,
+                Owner = request.Owner.Trim(),
+            };
+
+            Document? document = await _documentService.UpdateDocumentAsync(id, updateDocumentRequest, cancellationToken);
+            if(document is null)
+            {
+                return NotFound(new ProblemDetails
+                {
+                    Title = "Document not found",
+                    Detail = $"No document was found with ID '{id}'.",
+                    Status = StatusCodes.Status404NotFound
+                });
+            }
+            DocumentResponse? response = MapToResponse(document);
+            return Ok(response);
+        }
+        
+
         private static DocumentResponse MapToResponse(Document document)
         {
             ArgumentNullException.ThrowIfNull(document, nameof(document));
