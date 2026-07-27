@@ -23,11 +23,6 @@ namespace DocuTrack.Infrastructure.Repositories
             return document;
         }
 
-        public async Task<IReadOnlyList<Document>> GetAllAsync(CancellationToken cancellationToken = default)
-        {
-            return await _context.Documents.AsNoTracking().OrderByDescending(o => o.CreatedAt).ToListAsync(cancellationToken);
-        }
-
         public async Task<Document?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
         {
             return await _context.Documents.AsNoTracking().FirstOrDefaultAsync(d => d.Id == id, cancellationToken);
@@ -73,7 +68,6 @@ namespace DocuTrack.Infrastructure.Repositories
         public async Task<Document> UpdateAsync(Document document, CancellationToken cancellationToken = default)
         {
             ArgumentNullException.ThrowIfNull(document);
-            _context.Documents.Update(document);
             await _context.SaveChangesAsync(cancellationToken);
             return document;
         }
@@ -161,7 +155,7 @@ namespace DocuTrack.Infrastructure.Repositories
         private static IQueryable<Document> ApplySorting(DocumentQuery documentQuery, IQueryable<Document> query)
         {
             // Sorting
-            query = (documentQuery.SortBy, documentQuery.SortDirection) switch
+            IOrderedQueryable<Document> orderedQuery = (documentQuery.SortBy, documentQuery.SortDirection) switch
             {
                 (DocumentSortField.DocumentNumber, SortDirection.Ascending) => query.OrderBy(d => d.DocumentNumber),
                 (DocumentSortField.DocumentNumber, SortDirection.Descending) => query.OrderByDescending(d => d.DocumentNumber),
@@ -181,7 +175,7 @@ namespace DocuTrack.Infrastructure.Repositories
                 (DocumentSortField.CreatedAt, SortDirection.Ascending) => query.OrderBy(d => d.CreatedAt),
                 _ => query.OrderByDescending(d => d.CreatedAt), // Default sorting
             };
-            return query;
+            return orderedQuery.ThenBy(d => d.Id);
         }
     }
 }

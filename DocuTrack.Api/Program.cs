@@ -4,12 +4,13 @@ using DocuTrack.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using DocuTrack.Infrastructure.Repositories;
 using DocuTrack.Core.Services;
+using DocuTrack.Api.ExceptionHandling;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 
-builder.Services.AddControllers().AddJsonOptions(options =>
+builder.Services.AddControllers().AddJsonOptions(options  =>
 {
     options.JsonSerializerOptions.Converters.Add(
         new JsonStringEnumConverter());
@@ -21,6 +22,9 @@ string connectionString = builder.Configuration.GetConnectionString("DocuTrackDb
         ?? throw new InvalidOperationException(
         "Connection string 'DocuTrackDb' was not found.");
 
+builder.Services.AddProblemDetails();
+builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
+
 builder.Services.AddDbContext<DocuTrackDbContext>(options =>
 {
     options.UseSqlServer(connectionString);
@@ -30,6 +34,8 @@ builder.Services.AddScoped<IDocumentRepository, EfDocumentRepository>();
 builder.Services.AddScoped<DocumentService>();
 
 var app = builder.Build();
+
+app.UseExceptionHandler();
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
@@ -49,7 +55,5 @@ app.UseHttpsRedirection();
 app.UseAuthorization();
 
 app.MapControllers();
-
-
 
 app.Run();

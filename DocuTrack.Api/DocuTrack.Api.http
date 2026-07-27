@@ -1,19 +1,16 @@
 @DocuTrack.Api_HostAddress = http://localhost:5257
 
-### =========================================================
-### GET ALL DOCUMENTS
-### Expected: 200 OK
-### =========================================================
-
-GET {{DocuTrack.Api_HostAddress}}/api/documents
-Accept: application/json
-
-###
+@MissingId = 11111111-1111-1111-1111-111111111111
+@DraftId = REPLACE-WITH-DRAFT-ID
+@UploadedId = REPLACE-WITH-UPLOADED-ID
+@PendingApprovalId = REPLACE-WITH-PENDING-APPROVAL-ID
+@ApprovedId = REPLACE-WITH-APPROVED-ID
+@RejectedId = REPLACE-WITH-REJECTED-ID
+@ArchivedId = REPLACE-WITH-ARCHIVED-ID
 
 ### =========================================================
-### CREATE A VALID DOCUMENT
+### CREATE VALID DOCUMENT
 ### Expected: 201 Created
-### Copy the returned ID for later requests.
 ### =========================================================
 
 POST {{DocuTrack.Api_HostAddress}}/api/documents
@@ -31,7 +28,7 @@ Accept: application/json
 ###
 
 ### =========================================================
-### CREATE A SECOND DOCUMENT
+### CREATE SECOND VALID DOCUMENT
 ### Expected: 201 Created
 ### =========================================================
 
@@ -41,7 +38,7 @@ Accept: application/json
 
 {
   "title": "Quality Inspection Report",
-  "description": "Final inspection report for production batch 2026-07",
+  "description": "Inspection report for production batch",
   "documentType": "QualityReport",
   "department": "QualityAssurance",
   "owner": "John Smith"
@@ -50,35 +47,316 @@ Accept: application/json
 ###
 
 ### =========================================================
-### GET DOCUMENT BY ID
-### Replace the GUID with an existing document ID.
+### DEFAULT SEARCH AND PAGINATION
+### Expected: 200 OK
+### Defaults: page 1, page size 20
+### =========================================================
+
+GET {{DocuTrack.Api_HostAddress}}/api/documents
+Accept: application/json
+
+###
+
+### =========================================================
+### PAGE 1 WITH CUSTOM PAGE SIZE
 ### Expected: 200 OK
 ### =========================================================
 
-GET {{DocuTrack.Api_HostAddress}}/api/documents/ff45625d-06ee-4b74-9a9c-284fffaa3735
+GET {{DocuTrack.Api_HostAddress}}/api/documents?pageNumber=1&pageSize=5
+Accept: application/json
+
+###
+
+### =========================================================
+### PAGE 2
+### Expected: 200 OK
+### =========================================================
+
+GET {{DocuTrack.Api_HostAddress}}/api/documents?pageNumber=2&pageSize=5
+Accept: application/json
+
+###
+
+### =========================================================
+### TEXT SEARCH
+### Searches document number, title, description and owner
+### Expected: 200 OK
+### =========================================================
+
+GET {{DocuTrack.Api_HostAddress}}/api/documents?search=supplier
+Accept: application/json
+
+###
+
+### =========================================================
+### SEARCH BY DOCUMENT NUMBER
+### Expected: 200 OK
+### =========================================================
+
+GET {{DocuTrack.Api_HostAddress}}/api/documents?search=DOC-000001
+Accept: application/json
+
+###
+
+### =========================================================
+### OWNER FILTER
+### Expected: 200 OK
+### =========================================================
+
+GET {{DocuTrack.Api_HostAddress}}/api/documents?owner=Vaishnavi
+Accept: application/json
+
+###
+
+### =========================================================
+### STATUS FILTER
+### Expected: 200 OK
+### =========================================================
+
+GET {{DocuTrack.Api_HostAddress}}/api/documents?status=Draft
+Accept: application/json
+
+###
+
+### =========================================================
+### DEPARTMENT FILTER
+### Expected: 200 OK
+### =========================================================
+
+GET {{DocuTrack.Api_HostAddress}}/api/documents?department=Purchasing
+Accept: application/json
+
+###
+
+### =========================================================
+### STATUS AND DEPARTMENT FILTER
+### Expected: 200 OK
+### =========================================================
+
+GET {{DocuTrack.Api_HostAddress}}/api/documents?status=Draft&department=Purchasing
+Accept: application/json
+
+###
+
+### =========================================================
+### CREATED-FROM FILTER
+### Expected: 200 OK
+### =========================================================
+
+GET {{DocuTrack.Api_HostAddress}}/api/documents?createdFrom=2026-01-01T00:00:00Z
+Accept: application/json
+
+###
+
+### =========================================================
+### CREATED-TO FILTER
+### Expected: 200 OK
+### =========================================================
+
+GET {{DocuTrack.Api_HostAddress}}/api/documents?createdTo=2026-12-31T23:59:59Z
+Accept: application/json
+
+###
+
+### =========================================================
+### CREATED DATE RANGE
+### Expected: 200 OK
+### =========================================================
+
+GET {{DocuTrack.Api_HostAddress}}/api/documents?createdFrom=2026-01-01T00:00:00Z&createdTo=2026-12-31T23:59:59Z
+Accept: application/json
+
+###
+
+### =========================================================
+### SORT BY TITLE ASCENDING
+### Expected: 200 OK
+### =========================================================
+
+GET {{DocuTrack.Api_HostAddress}}/api/documents?sortBy=Title&sortDirection=Ascending
+Accept: application/json
+
+###
+
+### =========================================================
+### SORT BY TITLE DESCENDING
+### Expected: 200 OK
+### =========================================================
+
+GET {{DocuTrack.Api_HostAddress}}/api/documents?sortBy=Title&sortDirection=Descending
+Accept: application/json
+
+###
+
+### =========================================================
+### SORT BY DOCUMENT NUMBER
+### Expected: 200 OK
+### =========================================================
+
+GET {{DocuTrack.Api_HostAddress}}/api/documents?sortBy=DocumentNumber&sortDirection=Ascending
+Accept: application/json
+
+###
+
+### =========================================================
+### SORT BY OWNER
+### Expected: 200 OK
+### =========================================================
+
+GET {{DocuTrack.Api_HostAddress}}/api/documents?sortBy=Owner&sortDirection=Ascending
+Accept: application/json
+
+###
+
+### =========================================================
+### SORT BY STATUS
+### Expected: 200 OK
+### =========================================================
+
+GET {{DocuTrack.Api_HostAddress}}/api/documents?sortBy=Status&sortDirection=Ascending
+Accept: application/json
+
+###
+
+### =========================================================
+### SORT BY LAST UPDATED DATE
+### Expected: 200 OK
+### =========================================================
+
+GET {{DocuTrack.Api_HostAddress}}/api/documents?sortBy=LastUpdatedAt&sortDirection=Descending
+Accept: application/json
+
+###
+
+### =========================================================
+### COMBINED SEARCH, FILTER, SORT AND PAGINATION
+### Expected: 200 OK
+### =========================================================
+
+GET {{DocuTrack.Api_HostAddress}}/api/documents?search=supplier&status=Draft&department=Purchasing&owner=Vaishnavi&pageNumber=1&pageSize=10&sortBy=CreatedAt&sortDirection=Descending
+Accept: application/json
+
+###
+
+### =========================================================
+### SEARCH WITH NO MATCHES
+### Expected: 200 OK
+### Items should be empty and totalCount should be 0
+### =========================================================
+
+GET {{DocuTrack.Api_HostAddress}}/api/documents?search=definitely-does-not-exist
+Accept: application/json
+
+###
+
+### =========================================================
+### INVALID PAGE NUMBER
+### Expected: 400 Bad Request
+### =========================================================
+
+GET {{DocuTrack.Api_HostAddress}}/api/documents?pageNumber=0
+Accept: application/json
+
+###
+
+### =========================================================
+### INVALID NEGATIVE PAGE NUMBER
+### Expected: 400 Bad Request
+### =========================================================
+
+GET {{DocuTrack.Api_HostAddress}}/api/documents?pageNumber=-1
+Accept: application/json
+
+###
+
+### =========================================================
+### INVALID PAGE SIZE: ZERO
+### Expected: 400 Bad Request
+### =========================================================
+
+GET {{DocuTrack.Api_HostAddress}}/api/documents?pageSize=0
+Accept: application/json
+
+###
+
+### =========================================================
+### INVALID PAGE SIZE: GREATER THAN 100
+### Expected: 400 Bad Request
+### =========================================================
+
+GET {{DocuTrack.Api_HostAddress}}/api/documents?pageSize=101
+Accept: application/json
+
+###
+
+### =========================================================
+### INVALID DATE RANGE
+### Expected: 400 Bad Request
+### =========================================================
+
+GET {{DocuTrack.Api_HostAddress}}/api/documents?createdFrom=2026-12-31T00:00:00Z&createdTo=2026-01-01T00:00:00Z
+Accept: application/json
+
+###
+
+### =========================================================
+### UNKNOWN STATUS FILTER
+### Expected: 400 Bad Request
+### =========================================================
+
+GET {{DocuTrack.Api_HostAddress}}/api/documents?status=Unknown
+Accept: application/json
+
+###
+
+### =========================================================
+### UNKNOWN DEPARTMENT FILTER
+### Expected: 400 Bad Request
+### =========================================================
+
+GET {{DocuTrack.Api_HostAddress}}/api/documents?department=Unknown
+Accept: application/json
+
+###
+
+### =========================================================
+### INVALID ENUM TEXT
+### Model binding should return 400 Bad Request
+### =========================================================
+
+GET {{DocuTrack.Api_HostAddress}}/api/documents?status=NotAStatus
+Accept: application/json
+
+###
+
+### =========================================================
+### GET EXISTING DOCUMENT
+### Expected: 200 OK
+### =========================================================
+
+GET {{DocuTrack.Api_HostAddress}}/api/documents/{{DraftId}}
 Accept: application/json
 
 ###
 
 ### =========================================================
 ### GET MISSING DOCUMENT
+### Tests centralized DocumentNotFoundException handling
 ### Expected: 404 Not Found
 ### =========================================================
 
-GET {{DocuTrack.Api_HostAddress}}/api/documents/11111111-1111-1111-1111-111111111111
+GET {{DocuTrack.Api_HostAddress}}/api/documents/{{MissingId}}
 Accept: application/json
 
 ###
 
 ### =========================================================
-### UPDATE DOCUMENT METADATA
-### Replace the GUID with an existing document ID.
+### UPDATE VALID DOCUMENT
 ### Expected: 200 OK
-### Version should increase.
-### DocumentNumber and CreatedDate should not change.
+### Version should increase
 ### =========================================================
 
-PUT {{DocuTrack.Api_HostAddress}}/api/documents/fc46eb5b-4c3a-4d78-8839-16f27b5c5128
+PUT {{DocuTrack.Api_HostAddress}}/api/documents/{{DraftId}}
 Content-Type: application/json
 Accept: application/json
 
@@ -94,15 +372,16 @@ Accept: application/json
 
 ### =========================================================
 ### UPDATE MISSING DOCUMENT
+### Tests centralized 404 handling
 ### Expected: 404 Not Found
 ### =========================================================
 
-PUT {{DocuTrack.Api_HostAddress}}/api/documents/11111111-1111-1111-1111-111111111111
+PUT {{DocuTrack.Api_HostAddress}}/api/documents/{{MissingId}}
 Content-Type: application/json
 Accept: application/json
 
 {
-  "title": "Missing Document Update",
+  "title": "Missing Document",
   "description": "This document does not exist",
   "documentType": "Contract",
   "department": "Purchasing",
@@ -112,12 +391,30 @@ Accept: application/json
 ###
 
 ### =========================================================
-### VALID STATUS TRANSITION: DRAFT -> UPLOADED
-### Replace the GUID with a Draft document ID.
+### UPDATE WITH WHITESPACE OWNER
+### Expected: 400 Bad Request
+### =========================================================
+
+PUT {{DocuTrack.Api_HostAddress}}/api/documents/{{DraftId}}
+Content-Type: application/json
+Accept: application/json
+
+{
+  "title": "Valid Title",
+  "description": "Invalid owner test",
+  "documentType": "Contract",
+  "department": "Purchasing",
+  "owner": "   "
+}
+
+###
+
+### =========================================================
+### VALID STATUS TRANSITION: DRAFT TO UPLOADED
 ### Expected: 200 OK
 ### =========================================================
 
-PATCH {{DocuTrack.Api_HostAddress}}/api/documents/fc46eb5b-4c3a-4d78-8839-16f27b5c5128/status
+PATCH {{DocuTrack.Api_HostAddress}}/api/documents/{{DraftId}}/status
 Content-Type: application/json
 Accept: application/json
 
@@ -128,12 +425,11 @@ Accept: application/json
 ###
 
 ### =========================================================
-### VALID STATUS TRANSITION: UPLOADED -> UNDER REVIEW
-### Use the same document after changing it to Uploaded.
+### VALID STATUS TRANSITION: UPLOADED TO UNDER REVIEW
 ### Expected: 200 OK
 ### =========================================================
 
-PATCH {{DocuTrack.Api_HostAddress}}/api/documents/fc46eb5b-4c3a-4d78-8839-16f27b5c5128/status
+PATCH {{DocuTrack.Api_HostAddress}}/api/documents/{{UploadedId}}/status
 Content-Type: application/json
 Accept: application/json
 
@@ -144,26 +440,11 @@ Accept: application/json
 ###
 
 ### =========================================================
-### VALID STATUS TRANSITION: UNDER REVIEW -> PENDING APPROVAL
+### VALID STATUS TRANSITION: PENDING APPROVAL TO APPROVED
 ### Expected: 200 OK
 ### =========================================================
 
-PATCH {{DocuTrack.Api_HostAddress}}/api/documents/fc46eb5b-4c3a-4d78-8839-16f27b5c5128/status
-Content-Type: application/json
-Accept: application/json
-
-{
-  "newStatus": "PendingApproval"
-}
-
-###
-
-### =========================================================
-### VALID STATUS TRANSITION: PENDING APPROVAL -> APPROVED
-### Expected: 200 OK
-### =========================================================
-
-PATCH {{DocuTrack.Api_HostAddress}}/api/documents/fc46eb5b-4c3a-4d78-8839-16f27b5c5128/status
+PATCH {{DocuTrack.Api_HostAddress}}/api/documents/{{PendingApprovalId}}/status
 Content-Type: application/json
 Accept: application/json
 
@@ -174,58 +455,13 @@ Accept: application/json
 ###
 
 ### =========================================================
-### VALID STATUS TRANSITION: PENDING APPROVAL -> REJECTED
-### Use a separate PendingApproval document.
-### Expected: 200 OK
-### =========================================================
-
-PATCH {{DocuTrack.Api_HostAddress}}/api/documents/REPLACE-WITH-DOCUMENT-ID/status
-Content-Type: application/json
-Accept: application/json
-
-{
-  "newStatus": "Rejected"
-}
-
-###
-
-### =========================================================
-### VALID STATUS TRANSITION: REJECTED -> DRAFT
-### Expected: 200 OK
-### =========================================================
-
-PATCH {{DocuTrack.Api_HostAddress}}/api/documents/REPLACE-WITH-DOCUMENT-ID/status
-Content-Type: application/json
-Accept: application/json
-
-{
-  "newStatus": "Draft"
-}
-
-###
-
-### =========================================================
-### VALID STATUS TRANSITION: APPROVED -> ARCHIVED
-### Expected: 200 OK
-### =========================================================
-
-PATCH {{DocuTrack.Api_HostAddress}}/api/documents/REPLACE-WITH-DOCUMENT-ID/status
-Content-Type: application/json
-Accept: application/json
-
-{
-  "newStatus": "Archived"
-}
-
-###
-
-### =========================================================
-### INVALID STATUS TRANSITION: DRAFT -> APPROVED
-### Use a Draft document.
+### INVALID STATUS TRANSITION
+### Example: Draft to Approved
+### Tests centralized 409 handling
 ### Expected: 409 Conflict
 ### =========================================================
 
-PATCH {{DocuTrack.Api_HostAddress}}/api/documents/REPLACE-WITH-DOCUMENT-ID/status
+PATCH {{DocuTrack.Api_HostAddress}}/api/documents/{{DraftId}}/status
 Content-Type: application/json
 Accept: application/json
 
@@ -236,11 +472,11 @@ Accept: application/json
 ###
 
 ### =========================================================
-### INVALID STATUS: UNKNOWN
+### UNKNOWN NEW STATUS
 ### Expected: 400 Bad Request
 ### =========================================================
 
-PATCH {{DocuTrack.Api_HostAddress}}/api/documents/REPLACE-WITH-DOCUMENT-ID/status
+PATCH {{DocuTrack.Api_HostAddress}}/api/documents/{{DraftId}}/status
 Content-Type: application/json
 Accept: application/json
 
@@ -255,7 +491,7 @@ Accept: application/json
 ### Expected: 404 Not Found
 ### =========================================================
 
-PATCH {{DocuTrack.Api_HostAddress}}/api/documents/11111111-1111-1111-1111-111111111111/status
+PATCH {{DocuTrack.Api_HostAddress}}/api/documents/{{MissingId}}/status
 Content-Type: application/json
 Accept: application/json
 
@@ -266,60 +502,58 @@ Accept: application/json
 ###
 
 ### =========================================================
-### DELETE A DRAFT DOCUMENT
-### Replace with an existing Draft document ID.
+### DELETE DRAFT DOCUMENT
 ### Expected: 204 No Content
 ### =========================================================
 
-DELETE {{DocuTrack.Api_HostAddress}}/api/documents/REPLACE-WITH-DRAFT-DOCUMENT-ID
+DELETE {{DocuTrack.Api_HostAddress}}/api/documents/{{DraftId}}
 Accept: application/json
 
 ###
 
 ### =========================================================
-### DELETE A REJECTED DOCUMENT
-### Replace with an existing Rejected document ID.
+### DELETE REJECTED DOCUMENT
 ### Expected: 204 No Content
 ### =========================================================
 
-DELETE {{DocuTrack.Api_HostAddress}}/api/documents/REPLACE-WITH-REJECTED-DOCUMENT-ID
+DELETE {{DocuTrack.Api_HostAddress}}/api/documents/{{RejectedId}}
 Accept: application/json
 
 ###
 
 ### =========================================================
-### DELETE AN APPROVED DOCUMENT
-### Replace with an existing Approved document ID.
+### DELETE APPROVED DOCUMENT
+### Tests centralized 409 handling
 ### Expected: 409 Conflict
 ### =========================================================
 
-DELETE {{DocuTrack.Api_HostAddress}}/api/documents/REPLACE-WITH-APPROVED-DOCUMENT-ID
+DELETE {{DocuTrack.Api_HostAddress}}/api/documents/{{ApprovedId}}
 Accept: application/json
 
 ###
 
 ### =========================================================
-### DELETE AN ARCHIVED DOCUMENT
+### DELETE ARCHIVED DOCUMENT
 ### Expected: 409 Conflict
 ### =========================================================
 
-DELETE {{DocuTrack.Api_HostAddress}}/api/documents/REPLACE-WITH-ARCHIVED-DOCUMENT-ID
+DELETE {{DocuTrack.Api_HostAddress}}/api/documents/{{ArchivedId}}
 Accept: application/json
 
 ###
 
 ### =========================================================
-### DELETE A MISSING DOCUMENT
+### DELETE MISSING DOCUMENT
 ### Expected: 404 Not Found
 ### =========================================================
 
-DELETE {{DocuTrack.Api_HostAddress}}/api/documents/11111111-1111-1111-1111-111111111111
+DELETE {{DocuTrack.Api_HostAddress}}/api/documents/{{MissingId}}
 Accept: application/json
 
 ###
 
 ### =========================================================
-### CREATE DOCUMENT WITH MISSING TITLE
+### CREATE WITH MISSING TITLE
 ### Expected: 400 Bad Request
 ### =========================================================
 
@@ -337,7 +571,7 @@ Accept: application/json
 ###
 
 ### =========================================================
-### CREATE DOCUMENT WITH WHITESPACE TITLE
+### CREATE WITH WHITESPACE TITLE
 ### Expected: 400 Bad Request
 ### =========================================================
 
@@ -356,7 +590,7 @@ Accept: application/json
 ###
 
 ### =========================================================
-### CREATE DOCUMENT WITH MISSING OWNER
+### CREATE WITH MISSING OWNER
 ### Expected: 400 Bad Request
 ### =========================================================
 
@@ -374,26 +608,7 @@ Accept: application/json
 ###
 
 ### =========================================================
-### CREATE DOCUMENT WITH INVALID DOCUMENT TYPE
-### Expected: 400 Bad Request
-### =========================================================
-
-POST {{DocuTrack.Api_HostAddress}}/api/documents
-Content-Type: application/json
-Accept: application/json
-
-{
-  "title": "Invalid Type Test",
-  "description": "Invalid document type",
-  "documentType": "InvalidType",
-  "department": "Purchasing",
-  "owner": "Vaishnavi Bachhav"
-}
-
-###
-
-### =========================================================
-### CREATE DOCUMENT WITH UNKNOWN DOCUMENT TYPE
+### CREATE WITH UNKNOWN DOCUMENT TYPE
 ### Expected: 400 Bad Request
 ### =========================================================
 
@@ -412,7 +627,7 @@ Accept: application/json
 ###
 
 ### =========================================================
-### CREATE DOCUMENT WITH INVALID DEPARTMENT
+### CREATE WITH UNKNOWN DEPARTMENT
 ### Expected: 400 Bad Request
 ### =========================================================
 
@@ -421,29 +636,9 @@ Content-Type: application/json
 Accept: application/json
 
 {
-  "title": "Invalid Department Test",
-  "description": "Invalid department",
+  "title": "Unknown Department Test",
+  "description": "Unknown department",
   "documentType": "Contract",
-  "department": "InvalidDepartment",
+  "department": "Unknown",
   "owner": "Vaishnavi Bachhav"
-}
-
-###
-
-### =========================================================
-### UPDATE WITH WHITESPACE OWNER
-### Replace the GUID with an existing document ID.
-### Expected: 400 Bad Request
-### =========================================================
-
-PUT {{DocuTrack.Api_HostAddress}}/api/documents/REPLACE-WITH-DOCUMENT-ID
-Content-Type: application/json
-Accept: application/json
-
-{
-  "title": "Valid Title",
-  "description": "Invalid owner test",
-  "documentType": "Contract",
-  "department": "Purchasing",
-  "owner": "   "
 }

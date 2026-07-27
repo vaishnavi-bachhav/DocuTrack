@@ -20,6 +20,8 @@ namespace DocuTrack.Core.Services
         {
             ArgumentNullException.ThrowIfNull(request);
 
+            ValidateDocumentDetails(request.Title, request.Owner, request.DocumentType, request.Department);
+
             long nextNumber = await _documentRepository.GetNextDocumentNumberAsync(cancellationToken);
             DateTimeOffset now = DateTimeOffset.UtcNow;
 
@@ -32,7 +34,7 @@ namespace DocuTrack.Core.Services
                 Type = request.DocumentType,
                 Department = request.Department,
                 Owner = request.Owner,
-                Status = Enums.DocumentStatus.Draft,
+                Status = DocumentStatus.Draft,
                 CreatedAt = now,
                 LastUpdatedAt = now,
                 Version = 1
@@ -40,24 +42,32 @@ namespace DocuTrack.Core.Services
             return await _documentRepository.AddAsync(document, cancellationToken);
         }
 
-        public async Task<IReadOnlyList<Document>> GetAllDocumentsAsync(CancellationToken cancellationToken = default)
+        public async Task<Document> GetDocumentByIdAsync(Guid id, CancellationToken cancellationToken = default)
         {
-            return await _documentRepository.GetAllAsync(cancellationToken);
+            Document? document = await _documentRepository.GetByIdAsync(id, cancellationToken);
+            return document ?? throw new DocumentNotFoundException(id);
         }
 
-        public async Task<Document?> GetDocumentByIdAsync(Guid id, CancellationToken cancellationToken = default)
+        private async Task<Document> GetDocumentForUpdateAsync(
+    Guid id,
+    CancellationToken cancellationToken)
         {
-            return await _documentRepository.GetByIdAsync(id, cancellationToken);
-        }
+            Document? document =
+                await _documentRepository.GetByIdForUpdateAsync(
+                    id,
+                    cancellationToken);
 
-        public async Task<Document?> UpdateDocumentAsync(Guid id, UpdateDocumentRequest request, CancellationToken cancellationToken = default)
+            return document
+                ?? throw new DocumentNotFoundException(id);
+        }
+        public async Task<Document> UpdateDocumentAsync(Guid id, UpdateDocumentRequest request, CancellationToken cancellationToken = default)
         {
             ArgumentNullException.ThrowIfNull(request);
-            Document? existingDocument = await _documentRepository.GetByIdForUpdateAsync(id, cancellationToken);
-            if (existingDocument is null)
-            {
-                return null;
-            }
+
+            ValidateDocumentDetails(request.Title, request.Owner, request.DocumentType, request.Department);
+
+            Document existingDocument = await GetDocumentForUpdateAsync(id, cancellationToken);
+
             existingDocument.Title = request.Title;
             existingDocument.Description = request.Description;
             existingDocument.Type = request.DocumentType;
@@ -65,18 +75,40 @@ namespace DocuTrack.Core.Services
             existingDocument.Owner = request.Owner;
             existingDocument.LastUpdatedAt = DateTimeOffset.UtcNow;
             existingDocument.Version++;
+
             return await _documentRepository.UpdateAsync(existingDocument, cancellationToken);
         }
 
-        public async Task<Document?> ChangeDocumentStatusAsync(ChangeDocumentStatusRequest request, CancellationToken cancellationToken = default)
+        private static void ValidateDocumentDetails(string title, string owner, DocumentType documentType, Department department)
+        {
+            if (string.IsNullOrWhiteSpace(title))
+            {
+                throw new DomainValidationException("Document title is required.");
+            }
+            if (string.IsNullOrWhiteSpace(owner))
+            {
+                throw new DomainValidationException("Document owner is required.");
+            }
+            if (documentType == DocumentType.Unknown)
+            {
+                throw new DomainValidationException("A valid document type is required.");
+            }
+            if (department == Department.Unknown)
+            {
+                throw new DomainValidationException("A valid department is required.");
+            }
+        }
+
+        public async Task<Document> ChangeDocumentStatusAsync(ChangeDocumentStatusRequest request, CancellationToken cancellationToken = default)
         {
             ArgumentNullException.ThrowIfNull(request);
 
-            Document? existingDocument = await _documentRepository.GetByIdForUpdateAsync(request.DocumentId, cancellationToken);
-            if (existingDocument is null)
+            if (request.NewStatus == DocumentStatus.Unknown)
             {
-                return null;
+                throw new DomainValidationException("A valid new document status is required.");
             }
+
+            Document existingDocument = await GetDocumentForUpdateAsync(request.DocumentId, cancellationToken);
 
             if (!IsValidStatusTransition(existingDocument.Status, request.NewStatus))
             {
@@ -86,16 +118,13 @@ namespace DocuTrack.Core.Services
             existingDocument.Status = request.NewStatus;
             existingDocument.LastUpdatedAt = DateTimeOffset.UtcNow;
             existingDocument.Version++;
+
             return await _documentRepository.UpdateAsync(existingDocument, cancellationToken);
         }
 
-        public async Task<bool> DeleteDocumentAsync(Guid id, CancellationToken cancellationToken = default)
+        public async Task DeleteDocumentAsync(Guid id, CancellationToken cancellationToken = default)
         {
-            Document? existingDocument = await _documentRepository.GetByIdForUpdateAsync(id, cancellationToken);
-            if (existingDocument is null)
-            {
-                return false;
-            }
+            Document existingDocument = await GetDocumentForUpdateAsync(id, cancellationToken);
 
             bool canDelete = existingDocument.Status is DocumentStatus.Draft or DocumentStatus.Rejected;
             if(!canDelete)
@@ -103,12 +132,31 @@ namespace DocuTrack.Core.Services
                 throw new DocumentDeletionNotAllowedException(id, existingDocument.Status);
             }
             await _documentRepository.DeleteAsync(existingDocument, cancellationToken);
-            return true;
         }
 
         public async Task<PagedResult<Document>> SearchDocumentsAsync(DocumentQuery request, CancellationToken cancellationToken = default)
         {
             ArgumentNullException.ThrowIfNull(request);
+            if(request.PageNumber < 1)
+            {
+                throw new DomainValidationException("Page number must be greater than or equal to 1.");
+            }
+            if(request.PageSize < 1 || request.PageSize > 100)
+            {
+                throw new DomainValidationException("Page size must be between 1 and 100.");
+            }
+            if(request.Status == DocumentStatus.Unknown)
+            {
+                throw new DomainValidationException("A valid document status is required.");
+            }
+            if(request.Department == Department.Unknown)
+            {
+                throw new DomainValidationException("A valid department is required.");
+            }
+            if (request.CreatedFrom.HasValue && request.CreatedTo.HasValue && request.CreatedFrom > request.CreatedTo)
+            {
+                throw new DomainValidationException("CreatedFrom date cannot be later than CreatedTo date.");
+            }
             return await _documentRepository.SearchAsync(request, cancellationToken);
         }
 

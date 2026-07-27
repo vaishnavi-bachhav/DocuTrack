@@ -6,6 +6,11 @@ namespace DocuTrack.Core.Exceptions
     {
         public DocumentDeletionNotAllowedException(Guid documentId, DocumentStatus documentStatus) : base($"Document '{documentId}' cannot be deleted while its status is '{documentStatus}'.")
         {
+            DocumentId = documentId;
+            DocumentStatus = documentStatus;
         }
+
+        public Guid DocumentId { get; }
+        public DocumentStatus DocumentStatus { get; }
     }
 }

@@ -1,11 +1,10 @@
-﻿using DocuTrack.Api.Contracts.Responses;
+﻿using DocuTrack.Api.Contracts.Requests;
+using DocuTrack.Api.Contracts.Responses;
 using DocuTrack.Core.Enums;
+using DocuTrack.Core.Models;
+using DocuTrack.Core.Requests;
 using DocuTrack.Core.Services;
 using Microsoft.AspNetCore.Mvc;
-using DocuTrack.Core.Models;
-using DocuTrack.Api.Contracts.Requests;
-using DocuTrack.Core.Requests;
-using DocuTrack.Core.Exceptions;
 
 namespace DocuTrack.Api.Controllers
 {
@@ -57,8 +56,8 @@ namespace DocuTrack.Api.Controllers
             var createDocumentRequest = new CreateDocumentRequest
             {
                 Title = request.Title.Trim(),
-                Description = string.IsNullOrWhiteSpace(request.Description) 
-                            ? null 
+                Description = string.IsNullOrWhiteSpace(request.Description)
+                            ? null
                             : request.Description.Trim(),
                 DocumentType = request.DocumentType,
                 Department = request.Department,
@@ -118,7 +117,7 @@ namespace DocuTrack.Api.Controllers
 
             var queryRequest = new DocumentQuery
             {
-                Search =  string.IsNullOrWhiteSpace(request.Search) ? null : request.Search.Trim(),
+                Search = string.IsNullOrWhiteSpace(request.Search) ? null : request.Search.Trim(),
                 Status = request.Status,
                 Department = request.Department,
                 Owner = string.IsNullOrWhiteSpace(request.Owner) ? null : request.Owner.Trim(),
@@ -146,17 +145,7 @@ namespace DocuTrack.Api.Controllers
         [HttpGet("{id:guid}")]
         public async Task<ActionResult<DocumentResponse>> GetDocumentById(Guid id, CancellationToken cancellationToken)
         {
-            Document? document = await _documentService.GetDocumentByIdAsync(id, cancellationToken);
-
-            if (document is null)
-            {
-                return NotFound(new ProblemDetails
-                {
-                    Title = "Document not found",
-                    Detail = $"No document was found with ID '{id}'.",
-                    Status = StatusCodes.Status404NotFound
-                });
-            }
+            Document document = await _documentService.GetDocumentByIdAsync(id, cancellationToken);
 
             return Ok(MapToResponse(document));
         }
@@ -166,23 +155,17 @@ namespace DocuTrack.Api.Controllers
         {
             if (request.DocumentType == DocumentType.Unknown)
             {
-                ModelState.AddModelError(
-                    nameof(request.DocumentType),
-                    "Document type is required.");
+                ModelState.AddModelError(nameof(request.DocumentType), "Document type is required.");
             }
 
             if (request.Department == Department.Unknown)
             {
-                ModelState.AddModelError(
-                    nameof(request.Department),
-                    "Department is required.");
+                ModelState.AddModelError(nameof(request.Department), "Department is required.");
             }
 
             if (string.IsNullOrWhiteSpace(request.Title))
             {
-                ModelState.AddModelError(
-                    nameof(request.Title),
-                    "Title cannot contain only whitespace.");
+                ModelState.AddModelError(nameof(request.Title), "Title cannot contain only whitespace.");
             }
             if (string.IsNullOrWhiteSpace(request.Owner))
             {
@@ -203,24 +186,14 @@ namespace DocuTrack.Api.Controllers
                 Owner = request.Owner.Trim(),
             };
 
-            Document? document = await _documentService.UpdateDocumentAsync(id, updateDocumentRequest, cancellationToken);
-            if(document is null)
-            {
-                return NotFound(new ProblemDetails
-                {
-                    Title = "Document not found",
-                    Detail = $"No document was found with ID '{id}'.",
-                    Status = StatusCodes.Status404NotFound
-                });
-            }
-            DocumentResponse? response = MapToResponse(document);
-            return Ok(response);
+            Document document = await _documentService.UpdateDocumentAsync(id, updateDocumentRequest, cancellationToken);
+            return Ok(MapToResponse(document));
         }
 
         [HttpPatch("{id:guid}/status")]
         public async Task<ActionResult<DocumentResponse>> ChangeDocumentStatus(Guid id, [FromBody] ChangeDocumentStatusApiRequest request, CancellationToken cancellationToken)
         {
-            if(request.NewStatus == DocumentStatus.Unknown)
+            if (request.NewStatus == DocumentStatus.Unknown)
             {
                 ModelState.AddModelError(
                     nameof(request.NewStatus),
@@ -228,65 +201,22 @@ namespace DocuTrack.Api.Controllers
 
                 return ValidationProblem(ModelState);
             }
-            try
-            {
-                Document? updateDocument = await _documentService.ChangeDocumentStatusAsync(new ChangeDocumentStatusRequest
-                {
-                    DocumentId = id,
-                    NewStatus = request.NewStatus
-                }, cancellationToken);
 
-                if (updateDocument is null)
-                {
-                    return NotFound(new ProblemDetails
-                    {
-                        Title = "Document not found",
-                        Detail = $"No document was found with ID '{id}'.",
-                        Status = StatusCodes.Status404NotFound
-                    });
-                }
-
-                return Ok(MapToResponse(updateDocument));
-            }
-            catch (InvalidDocumentStatusTransitionException exception)
+            Document updateDocument = await _documentService.ChangeDocumentStatusAsync(new ChangeDocumentStatusRequest
             {
-                return Conflict(new ProblemDetails
-                {
-                    Title = "Invalid document status transition",
-                    Detail = exception.Message,
-                    Status = StatusCodes.Status409Conflict  
-                });
-            }
+                DocumentId = id,
+                NewStatus = request.NewStatus
+            }, cancellationToken);
+
+            return Ok(MapToResponse(updateDocument));
         }
 
         [HttpDelete("{id:guid}")]
         public async Task<IActionResult> DeleteDocument(Guid id, CancellationToken cancellationToken)
         {
-            try
-            {
-                bool isDeleted = await _documentService.DeleteDocumentAsync(id, cancellationToken);
+            await _documentService.DeleteDocumentAsync(id, cancellationToken);
 
-                if(!isDeleted)
-                {
-                    return NotFound(new ProblemDetails
-                    {
-                        Title = "Document not found",
-                        Detail = $"No document was found with ID '{id}'.",
-                        Status = StatusCodes.Status404NotFound
-                    });
-                }
-
-                return NoContent();
-            }
-            catch (DocumentDeletionNotAllowedException exception)
-            {
-                return Conflict(new ProblemDetails
-                {
-                    Title = "Document cannot be deleted",
-                    Detail = exception.Message,
-                    Status = StatusCodes.Status409Conflict
-                });
-            }
+            return NoContent();
         }
 
         private static DocumentResponse MapToResponse(Document document)
