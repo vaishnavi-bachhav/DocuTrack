@@ -11,7 +11,7 @@ namespace DocuTrack.Api.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    public class DocumentsController : ControllerBase
+    public sealed class DocumentsController : ControllerBase
     {
         private readonly DocumentService _documentService;
         public DocumentsController(DocumentService documentService)
@@ -121,6 +121,10 @@ namespace DocuTrack.Api.Controllers
                     nameof(request.Title),
                     "Title cannot contain only whitespace.");
             }
+            if (string.IsNullOrWhiteSpace(request.Owner))
+            {
+                ModelState.AddModelError(nameof(request.Owner), "Owner cannot contain only whitespace.");
+            }
             if (!ModelState.IsValid)
             {
                 return ValidationProblem(ModelState);
@@ -193,7 +197,7 @@ namespace DocuTrack.Api.Controllers
         }
 
         [HttpDelete("{id:guid}")]
-        public async Task<ActionResult<bool>> DeleteDocument(Guid id, CancellationToken cancellationToken)
+        public async Task<IActionResult> DeleteDocument(Guid id, CancellationToken cancellationToken)
         {
             try
             {
@@ -211,7 +215,7 @@ namespace DocuTrack.Api.Controllers
 
                 return NoContent();
             }
-            catch (InvalidOperationException exception)
+            catch (DocumentDeletionNotAllowedException exception)
             {
                 return Conflict(new ProblemDetails
                 {

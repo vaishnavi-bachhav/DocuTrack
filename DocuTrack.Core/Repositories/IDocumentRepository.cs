@@ -7,8 +7,9 @@ namespace DocuTrack.Core.Repositories
         Task<Document> AddAsync(Document document, CancellationToken cancellationToken = default);
         Task<IReadOnlyList<Document>> GetAllAsync(CancellationToken cancellationToken = default);
         Task<Document?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default);
+        Task<Document?> GetByIdForUpdateAsync(Guid id, CancellationToken cancellationToken = default);
         Task<long> GetNextDocumentNumberAsync(CancellationToken cancellationToken = default);
-        Task<Document?> UpdateAsync(Document document, CancellationToken cancellationToken = default);
+        Task<Document> UpdateAsync(Document document, CancellationToken cancellationToken = default);
         Task DeleteAsync(Document document, CancellationToken cancellationToken = default);
     }
 }

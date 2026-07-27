@@ -53,7 +53,7 @@ namespace DocuTrack.Core.Services
         public async Task<Document?> UpdateDocumentAsync(Guid id, UpdateDocumentRequest request, CancellationToken cancellationToken = default)
         {
             ArgumentNullException.ThrowIfNull(request);
-            Document? existingDocument = await _documentRepository.GetByIdAsync(id, cancellationToken);
+            Document? existingDocument = await _documentRepository.GetByIdForUpdateAsync(id, cancellationToken);
             if (existingDocument is null)
             {
                 return null;
@@ -72,7 +72,7 @@ namespace DocuTrack.Core.Services
         {
             ArgumentNullException.ThrowIfNull(request);
 
-            Document? existingDocument = await _documentRepository.GetByIdAsync(request.DocumentId, cancellationToken);
+            Document? existingDocument = await _documentRepository.GetByIdForUpdateAsync(request.DocumentId, cancellationToken);
             if (existingDocument is null)
             {
                 return null;
@@ -91,7 +91,7 @@ namespace DocuTrack.Core.Services
 
         public async Task<bool> DeleteDocumentAsync(Guid id, CancellationToken cancellationToken = default)
         {
-            Document? existingDocument = await _documentRepository.GetByIdAsync(id, cancellationToken);
+            Document? existingDocument = await _documentRepository.GetByIdForUpdateAsync(id, cancellationToken);
             if (existingDocument is null)
             {
                 return false;
@@ -100,7 +100,7 @@ namespace DocuTrack.Core.Services
             bool canDelete = existingDocument.Status is DocumentStatus.Draft or DocumentStatus.Rejected;
             if(!canDelete)
             {
-                throw new InvalidOperationException($"Document with ID {id} cannot be deleted because it is in status {existingDocument.Status}.");
+                throw new DocumentDeletionNotAllowedException(id, existingDocument.Status);
             }
             await _documentRepository.DeleteAsync(existingDocument, cancellationToken);
             return true;

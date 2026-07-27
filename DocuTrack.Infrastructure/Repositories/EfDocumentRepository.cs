@@ -1,6 +1,5 @@
 ﻿using DocuTrack.Core.Models;
 using DocuTrack.Core.Repositories;
-using DocuTrack.Core.Requests;
 using DocuTrack.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 
@@ -32,12 +31,17 @@ namespace DocuTrack.Infrastructure.Repositories
             return await _context.Documents.AsNoTracking().FirstOrDefaultAsync(d => d.Id == id, cancellationToken);
         }
 
+        public async Task<Document?> GetByIdForUpdateAsync(Guid id, CancellationToken cancellationToken = default)
+        {
+            return await _context.Documents.FirstOrDefaultAsync(d => d.Id == id, cancellationToken);
+        }
+
         public async Task<long> GetNextDocumentNumberAsync(CancellationToken cancellationToken = default)
         {
             var connection = _context.Database.GetDbConnection();
 
             bool shouldCloseConnection = connection.State != System.Data.ConnectionState.Open;
-            
+
             if (shouldCloseConnection)
             {
                 await connection.OpenAsync(cancellationToken);
@@ -64,7 +68,7 @@ namespace DocuTrack.Infrastructure.Repositories
             }
         }
 
-        public async Task<Document?> UpdateAsync(Document document, CancellationToken cancellationToken = default)
+        public async Task<Document> UpdateAsync(Document document, CancellationToken cancellationToken = default)
         {
             ArgumentNullException.ThrowIfNull(document);
             _context.Documents.Update(document);
