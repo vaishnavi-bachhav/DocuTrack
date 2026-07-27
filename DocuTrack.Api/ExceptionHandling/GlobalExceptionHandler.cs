@@ -1,6 +1,7 @@
 ﻿using DocuTrack.Core.Exceptions;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 
 namespace DocuTrack.Api.ExceptionHandling
 {
@@ -18,73 +19,147 @@ namespace DocuTrack.Api.ExceptionHandling
             ArgumentNullException.ThrowIfNull(context);
             ArgumentNullException.ThrowIfNull(exception);
 
+            if (exception is OperationCanceledException && context.RequestAborted.IsCancellationRequested)
+            {
+                return false;
+            }
+
             ProblemDetails problemDetails = exception switch
             {
-                DocumentNotFoundException notFoundException => new ProblemDetails
-                {
-                    Title = "Document Not Found",
-                    Detail = notFoundException.Message,
-                    Status = StatusCodes.Status404NotFound,
-                    Type = "https://httpstatuses.com/404"
-                },
+                DocumentNotFoundException notFoundException =>
+                    CreateProblemDetails(
+                        StatusCodes.Status404NotFound,
+                        "Document not found",
+                        notFoundException.Message,
+                        "https://httpstatuses.com/404"),
 
-                InvalidDocumentStatusTransitionException transitionException => new ProblemDetails
-                {
-                    Title = "Invalid Document Status Transition",
-                    Detail = transitionException.Message,
-                    Status = StatusCodes.Status409Conflict,
-                    Type = "https://httpstatuses.com/409"
-                },
+                DocumentConcurrencyException concurrencyException =>
+                    CreateProblemDetails(
+                        StatusCodes.Status409Conflict,
+                        "Document concurrency conflict",
+                        concurrencyException.Message,
+                        "https://httpstatuses.com/409"),
 
-                DocumentDeletionNotAllowedException deletionException => new ProblemDetails
-                {
-                    Title = "Document Deletion Not Allowed",
-                    Detail = deletionException.Message,
-                    Status = StatusCodes.Status409Conflict,
-                    Type = "https://httpstatuses.com/409"
-                },
+                InvalidDocumentStatusTransitionException transitionException =>
+                    CreateProblemDetails(
+                        StatusCodes.Status409Conflict,
+                        "Invalid document status transition",
+                        transitionException.Message,
+                        "https://httpstatuses.com/409"),
 
-                DomainValidationException validationException => new ProblemDetails
-                {
-                    Title = "Validation failed",
-                    Detail = validationException.Message,
-                    Status = StatusCodes.Status400BadRequest,
-                    Type = "https://httpstatuses.com/400"
-                },
+                DocumentDeletionNotAllowedException deletionException =>
+                    CreateProblemDetails(
+                        StatusCodes.Status409Conflict,
+                        "Document deletion not allowed",
+                        deletionException.Message,
+                        "https://httpstatuses.com/409"),
 
-                _ => new ProblemDetails
-                {
-                    Title = "An unexpected error occurred",
-                    Detail = "The server encountered an unexpected error.",
-                    Status = StatusCodes.Status500InternalServerError,
-                    Type = "https://httpstatuses.com/500"
-                }
+                DomainValidationException validationException =>
+                    CreateProblemDetails(
+                        StatusCodes.Status400BadRequest,
+                        "Validation failed",
+                        validationException.Message,
+                        "https://httpstatuses.com/400"),
+
+                DatabaseConflictException conflictException =>
+                    CreateProblemDetails(
+                        StatusCodes.Status409Conflict,
+                        "Database conflict",
+                        conflictException.Message,
+                        "https://httpstatuses.com/409"),
+
+                DatabaseUnavailableException =>
+                    CreateProblemDetails(
+                        StatusCodes.Status503ServiceUnavailable,
+                        "Service temporarily unavailable",
+                        "The database is temporarily unavailable. Please try again later.",
+                        "https://httpstatuses.com/503"),
+
+                DbUpdateConcurrencyException =>
+                    CreateProblemDetails(
+                        StatusCodes.Status409Conflict,
+                        "Document concurrency conflict",
+                        "The document was modified or deleted by another request.",
+                        "https://httpstatuses.com/409"),
+
+                DbUpdateException =>
+                    CreateProblemDetails(
+                        StatusCodes.Status500InternalServerError,
+                        "Database operation failed",
+                        "An unexpected database error occurred.",
+                        "https://httpstatuses.com/500"),
+
+                _ =>
+                    CreateProblemDetails(
+                        StatusCodes.Status500InternalServerError,
+                        "An unexpected error occurred",
+                        "The server encountered an unexpected error.",
+                        "https://httpstatuses.com/500")
             };
 
-            if (problemDetails.Status == StatusCodes.Status500InternalServerError)
+            switch (exception)
             {
-                _logger.LogError(
-                                exception,
-                                "Unhandled exception occurred while processing {Method} {Path}",
-                                context.Request.Method,
-                                context.Request.Path);
-            }
-            else
-            {
-                _logger.LogWarning(
-                                exception,
-                                "Handled exception occurred while processing {Method} {Path}",
-                                context.Request.Method,
-                                context.Request.Path);
+                case DocumentNotFoundException:
+                case DomainValidationException:
+                    _logger.LogInformation(
+                        exception,
+                        "Request rejected for {Method} {Path}",
+                        context.Request.Method,
+                        context.Request.Path
+                    );
+                    break;
+
+                case InvalidDocumentStatusTransitionException:
+                case DocumentDeletionNotAllowedException:
+                case DocumentConcurrencyException:
+                case DatabaseConflictException:
+                case DbUpdateConcurrencyException:
+                    _logger.LogWarning(
+                        exception,
+                        "Request conflict for {Method} {Path}",
+                        context.Request.Method,
+                        context.Request.Path);
+                    break;
+
+                case DatabaseUnavailableException:
+                    _logger.LogError(
+                        exception,
+                        "Database unavailable while processing {Method} {Path}",
+                        context.Request.Method,
+                        context.Request.Path);
+                    break;
+
+                default:
+                    _logger.LogError(
+                        exception,
+                        "Unhandled exception while processing {Method} {Path}",
+                        context.Request.Method,
+                        context.Request.Path);
+                    break;
             }
 
             problemDetails.Instance = context.Request.Path;
             problemDetails.Extensions["traceId"] = context.TraceIdentifier;
             context.Response.StatusCode = problemDetails.Status ?? StatusCodes.Status500InternalServerError;
+            context.Response.ContentType = "application/problem+json";
 
-            await context.Response.WriteAsJsonAsync(problemDetails, cancellationToken);
+            await context.Response.WriteAsJsonAsync(problemDetails,
+                options: null,
+                contentType: "application/problem+json",
+                cancellationToken);
 
             return true;
+        }
+
+        private static ProblemDetails CreateProblemDetails(int status, string title, string detail, string type)
+        {
+            return new ProblemDetails
+            {
+                Status = status,
+                Title = title,
+                Detail = detail,
+                Type = type
+            };
         }
     }
 }

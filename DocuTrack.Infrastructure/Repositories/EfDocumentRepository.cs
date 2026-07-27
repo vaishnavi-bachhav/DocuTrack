@@ -4,6 +4,8 @@ using DocuTrack.Core.Repositories;
 using DocuTrack.Core.Requests;
 using DocuTrack.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
+using DocuTrack.Core.Exceptions;
+using Microsoft.Data.SqlClient;
 
 namespace DocuTrack.Infrastructure.Repositories
 {
@@ -19,7 +21,7 @@ namespace DocuTrack.Infrastructure.Repositories
         {
             ArgumentNullException.ThrowIfNull(document);
             await _context.Documents.AddAsync(document, cancellationToken);
-            await _context.SaveChangesAsync(cancellationToken);
+            await SaveChangesAsync(document.Id, cancellationToken);
             return document;
         }
 
@@ -39,12 +41,13 @@ namespace DocuTrack.Infrastructure.Repositories
 
             bool shouldCloseConnection = connection.State != System.Data.ConnectionState.Open;
 
-            if (shouldCloseConnection)
+            try
+            {
+                if (shouldCloseConnection)
             {
                 await connection.OpenAsync(cancellationToken);
             }
-            try
-            {
+            
                 await using var command = connection.CreateCommand();
                 command.CommandText = "SELECT NEXT VALUE FOR dbo.DocumentNumberSequence";
 
@@ -56,9 +59,13 @@ namespace DocuTrack.Infrastructure.Repositories
                 }
                 return Convert.ToInt64(result);
             }
+            catch(SqlException ex) when (IsDatabaseUnavailable(ex))
+            {
+                throw new DatabaseUnavailableException(ex);
+            }
             finally
             {
-                if (shouldCloseConnection)
+                if (shouldCloseConnection && connection.State == System.Data.ConnectionState.Open)
                 {
                     await connection.CloseAsync();
                 }
@@ -68,7 +75,7 @@ namespace DocuTrack.Infrastructure.Repositories
         public async Task<Document> UpdateAsync(Document document, CancellationToken cancellationToken = default)
         {
             ArgumentNullException.ThrowIfNull(document);
-            await _context.SaveChangesAsync(cancellationToken);
+            await SaveChangesAsync(document.Id, cancellationToken);
             return document;
         }
 
@@ -76,7 +83,7 @@ namespace DocuTrack.Infrastructure.Repositories
         {
             ArgumentNullException.ThrowIfNull(document);
             _context.Documents.Remove(document);
-            await _context.SaveChangesAsync(cancellationToken);
+            await SaveChangesAsync(document.Id, cancellationToken);
         }
 
         public async Task<PagedResult<Document>> SearchAsync(DocumentQuery documentQuery, CancellationToken cancellationToken = default)
@@ -128,7 +135,7 @@ namespace DocuTrack.Infrastructure.Repositories
 
             // Total records before pagination
             int totalCount = await query.CountAsync(cancellationToken);
-            
+
             // Sorting
             query = ApplySorting(documentQuery, query);
 
@@ -176,6 +183,55 @@ namespace DocuTrack.Infrastructure.Repositories
                 _ => query.OrderByDescending(d => d.CreatedAt), // Default sorting
             };
             return orderedQuery.ThenBy(d => d.Id);
+        }
+
+        private async Task SaveChangesAsync(Guid? documentId, CancellationToken cancellationToken)
+        {
+            try
+            {
+                await _context.SaveChangesAsync(cancellationToken);
+            }
+            catch (DbUpdateConcurrencyException ex)
+            {
+                throw new DocumentConcurrencyException(documentId ?? Guid.Empty, ex);
+            }
+            catch (DbUpdateException exception) when (exception.InnerException is SqlException sqlException && IsUniqueConstraintViolation(sqlException))
+            {
+                throw new DatabaseConflictException("A document with the same unique value already exists.", exception);
+            }
+            catch (DbUpdateException exception) when (exception.InnerException is SqlException sqlException && IsConstraintViolation(sqlException))
+            {
+                throw new DatabaseConflictException("The document operation violates a database constraint.", exception);
+            }
+            catch (DbUpdateException exception) when (exception.InnerException is SqlException sqlException && IsDatabaseUnavailable(sqlException))
+            {
+                throw new DatabaseUnavailableException(exception);
+            }
+        }
+
+        private static bool IsUniqueConstraintViolation(SqlException exception)
+        {
+            return exception.Number is 2601 or 2627;
+        }
+
+        private static bool IsConstraintViolation(SqlException exception)
+        {
+            return exception.Number is
+                547 or   // Foreign-key or check-constraint violation
+                515;     // Cannot insert NULL
+        }
+
+        private static bool IsDatabaseUnavailable(SqlException exception)
+        {
+            return exception.Number is
+                -2 or    // Command timeout
+                53 or    // Server not found or unavailable
+                64 or    // Network name unavailable
+                233 or   // Connection initialization failure
+                4060 or  // Cannot open database
+                10053 or // Connection aborted
+                10054 or // Connection reset
+                10060;   // Connection timeout
         }
     }
 }
