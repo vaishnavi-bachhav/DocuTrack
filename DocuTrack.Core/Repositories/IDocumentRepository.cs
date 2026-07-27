@@ -1,4 +1,5 @@
 ﻿using DocuTrack.Core.Models;
+using DocuTrack.Core.Requests;
 
 namespace DocuTrack.Core.Repositories
 {
@@ -11,5 +12,6 @@ namespace DocuTrack.Core.Repositories
         Task<long> GetNextDocumentNumberAsync(CancellationToken cancellationToken = default);
         Task<Document> UpdateAsync(Document document, CancellationToken cancellationToken = default);
         Task DeleteAsync(Document document, CancellationToken cancellationToken = default);
+        Task<PagedResult<Document>> SearchAsync(DocumentQuery documentQuery, CancellationToken cancellationToken = default);
     }
 }

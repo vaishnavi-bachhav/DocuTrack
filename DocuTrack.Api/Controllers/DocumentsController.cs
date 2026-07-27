@@ -74,10 +74,73 @@ namespace DocuTrack.Api.Controllers
         }
 
         [HttpGet]
-        public async Task<ActionResult<IReadOnlyCollection<DocumentResponse>>> GetAllDocuments(CancellationToken cancellationToken)
+        public async Task<ActionResult<PagedResult<DocumentResponse>>> GetDocuments([FromQuery] DocumentQueryApiRequest request, CancellationToken cancellationToken)
         {
-            IReadOnlyCollection<DocumentResponse> documents = (await _documentService.GetAllDocumentsAsync(cancellationToken)).Select(MapToResponse).ToList();
-            return Ok(documents);
+            if (request.PageNumber < 1)
+            {
+                ModelState.AddModelError(
+                    nameof(request.PageNumber),
+                    "Page number must be greater than or equal to 1.");
+            }
+            if (request.PageSize < 1 || request.PageSize > 100)
+            {
+                ModelState.AddModelError(
+                    nameof(request.PageSize),
+                    "Page size must be between 1 and 100.");
+            }
+            if (request.Status == DocumentStatus.Unknown)
+            {
+                ModelState.AddModelError(
+                    nameof(request.Status),
+                    "A valid document status is required.");
+            }
+
+            if (request.Department == Department.Unknown)
+            {
+                ModelState.AddModelError(
+                    nameof(request.Department),
+                    "A valid department is required.");
+            }
+
+            if (request.CreatedFrom.HasValue &&
+                request.CreatedTo.HasValue &&
+                request.CreatedFrom > request.CreatedTo)
+            {
+                ModelState.AddModelError(
+                    nameof(request.CreatedFrom),
+                    "CreatedFrom cannot be later than CreatedTo.");
+            }
+
+            if (!ModelState.IsValid)
+            {
+                return ValidationProblem(ModelState);
+            }
+
+            var queryRequest = new DocumentQuery
+            {
+                Search =  string.IsNullOrWhiteSpace(request.Search) ? null : request.Search.Trim(),
+                Status = request.Status,
+                Department = request.Department,
+                Owner = string.IsNullOrWhiteSpace(request.Owner) ? null : request.Owner.Trim(),
+                CreatedFrom = request.CreatedFrom,
+                CreatedTo = request.CreatedTo,
+                PageNumber = request.PageNumber,
+                PageSize = request.PageSize,
+                SortBy = request.SortBy,
+                SortDirection = request.SortDirection,
+            };
+            PagedResult<Document> result = await _documentService.SearchDocumentsAsync(queryRequest, cancellationToken);
+            PagedResult<DocumentResponse> response = new()
+            {
+                Items = result.Items.Select(MapToResponse).ToList(),
+                TotalCount = result.TotalCount,
+                PageNumber = result.PageNumber,
+                PageSize = result.PageSize,
+                TotalPages = result.TotalPages,
+                HasNextPage = result.HasNextPage,
+                HasPreviousPage = result.HasPreviousPage
+            };
+            return Ok(response);
         }
 
         [HttpGet("{id:guid}")]

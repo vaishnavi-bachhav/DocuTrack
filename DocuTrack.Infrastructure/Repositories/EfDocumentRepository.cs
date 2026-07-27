@@ -1,5 +1,7 @@
-﻿using DocuTrack.Core.Models;
+﻿using DocuTrack.Core.Enums;
+using DocuTrack.Core.Models;
 using DocuTrack.Core.Repositories;
+using DocuTrack.Core.Requests;
 using DocuTrack.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 
@@ -81,6 +83,105 @@ namespace DocuTrack.Infrastructure.Repositories
             ArgumentNullException.ThrowIfNull(document);
             _context.Documents.Remove(document);
             await _context.SaveChangesAsync(cancellationToken);
+        }
+
+        public async Task<PagedResult<Document>> SearchAsync(DocumentQuery documentQuery, CancellationToken cancellationToken = default)
+        {
+            ArgumentNullException.ThrowIfNull(documentQuery);
+            IQueryable<Document> query = _context.Documents.AsNoTracking();
+
+            // Search
+            if (!string.IsNullOrWhiteSpace(documentQuery.Search))
+            {
+                string search = documentQuery.Search.Trim();
+
+                query = query.Where(d =>
+                    d.DocumentNumber.Contains(search) ||
+                    d.Title.Contains(search) ||
+                    (d.Description != null && d.Description.Contains(search)) ||
+                    d.Owner.Contains(search));
+            }
+
+            // Status filter
+            if (documentQuery.Status.HasValue)
+            {
+                query = query.Where(d => d.Status == documentQuery.Status.Value);
+            }
+
+            // Department filter
+            if (documentQuery.Department.HasValue)
+            {
+                query = query.Where(d => d.Department == documentQuery.Department.Value);
+            }
+
+            // Owner filter
+            if (!string.IsNullOrWhiteSpace(documentQuery.Owner))
+            {
+                string owner = documentQuery.Owner.Trim();
+                query = query.Where(d => d.Owner.Contains(owner));
+            }
+
+            // Created date range
+            if (documentQuery.CreatedFrom.HasValue)
+            {
+                query = query.Where(d => d.CreatedAt >= documentQuery.CreatedFrom.Value);
+            }
+
+            if (documentQuery.CreatedTo.HasValue)
+            {
+                query = query.Where(d => d.CreatedAt <= documentQuery.CreatedTo.Value);
+            }
+
+            // Total records before pagination
+            int totalCount = await query.CountAsync(cancellationToken);
+            
+            // Sorting
+            query = ApplySorting(documentQuery, query);
+
+            // Pagination
+            List<Document> documents = await query
+                .Skip((documentQuery.PageNumber - 1) * documentQuery.PageSize)
+                .Take(documentQuery.PageSize)
+                .ToListAsync(cancellationToken);
+
+            int totalPages = (int)Math.Ceiling((double)totalCount / documentQuery.PageSize);
+
+            return new PagedResult<Document>
+            {
+                Items = documents,
+                PageNumber = documentQuery.PageNumber,
+                PageSize = documentQuery.PageSize,
+                TotalCount = totalCount,
+                TotalPages = totalPages,
+                HasPreviousPage = documentQuery.PageNumber > 1,
+                HasNextPage = documentQuery.PageNumber < totalPages
+            };
+        }
+
+        private static IQueryable<Document> ApplySorting(DocumentQuery documentQuery, IQueryable<Document> query)
+        {
+            // Sorting
+            query = (documentQuery.SortBy, documentQuery.SortDirection) switch
+            {
+                (DocumentSortField.DocumentNumber, SortDirection.Ascending) => query.OrderBy(d => d.DocumentNumber),
+                (DocumentSortField.DocumentNumber, SortDirection.Descending) => query.OrderByDescending(d => d.DocumentNumber),
+
+                (DocumentSortField.Title, SortDirection.Ascending) => query.OrderBy(d => d.Title),
+                (DocumentSortField.Title, SortDirection.Descending) => query.OrderByDescending(d => d.Title),
+
+                (DocumentSortField.Owner, SortDirection.Ascending) => query.OrderBy(d => d.Owner),
+                (DocumentSortField.Owner, SortDirection.Descending) => query.OrderByDescending(d => d.Owner),
+
+                (DocumentSortField.Status, SortDirection.Ascending) => query.OrderBy(d => d.Status),
+                (DocumentSortField.Status, SortDirection.Descending) => query.OrderByDescending(d => d.Status),
+
+                (DocumentSortField.LastUpdatedAt, SortDirection.Ascending) => query.OrderBy(d => d.LastUpdatedAt),
+                (DocumentSortField.LastUpdatedAt, SortDirection.Descending) => query.OrderByDescending(d => d.LastUpdatedAt),
+
+                (DocumentSortField.CreatedAt, SortDirection.Ascending) => query.OrderBy(d => d.CreatedAt),
+                _ => query.OrderByDescending(d => d.CreatedAt), // Default sorting
+            };
+            return query;
         }
     }
 }

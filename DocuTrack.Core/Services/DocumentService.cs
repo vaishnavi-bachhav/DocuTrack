@@ -106,6 +106,12 @@ namespace DocuTrack.Core.Services
             return true;
         }
 
+        public async Task<PagedResult<Document>> SearchDocumentsAsync(DocumentQuery request, CancellationToken cancellationToken = default)
+        {
+            ArgumentNullException.ThrowIfNull(request);
+            return await _documentRepository.SearchAsync(request, cancellationToken);
+        }
+
         private static bool IsValidStatusTransition(DocumentStatus currentStatus, DocumentStatus newStatus)
         {
             return (currentStatus, newStatus) switch
