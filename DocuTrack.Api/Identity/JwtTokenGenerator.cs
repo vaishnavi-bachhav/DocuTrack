@@ -60,26 +60,7 @@ namespace DocuTrack.Api.Identity
                 UserId = user.Id,
                 Email = user.Email ?? string.Empty,
                 FullName = user.FullName,
-                Roles = roles.// Replace this:
-List<Claim> claims = [
-    new(JwtRegisteredClaimNames.Sub, user.Id.ToString()),
-    new(ClaimTypes.NameIdentifier, user.Id.ToString()),
-    new(JwtRegisteredClaimNames.Email, user.Email ?? string.Empty),
-    new(ClaimTypes.Email, user.Email ?? string.Empty),
-    new(ClaimTypes.Name, user.FullName),
-    new(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
-];
-
-// With this:
-var claims = new List<Claim>
-{
-    new Claim(JwtRegisteredClaimNames.Sub, user.Id.ToString()),
-    new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
-    new Claim(JwtRegisteredClaimNames.Email, user.Email ?? string.Empty),
-    new Claim(ClaimTypes.Email, user.Email ?? string.Empty),
-    new Claim(ClaimTypes.Name, user.FullName),
-    new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
-};()
+                Roles = roles.ToList()
             };
         }
     }
