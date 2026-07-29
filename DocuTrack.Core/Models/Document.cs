@@ -15,5 +15,7 @@ namespace DocuTrack.Core.Models
         public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.Now;
         public DateTimeOffset LastUpdatedAt { get; set; } = DateTimeOffset.Now;
         public int Version { get; set; } = 1;
+        public Guid CreatedByUserId { get; set; }
+        public Guid? LastModifiedByUserId { get; set; }
     }
 }

@@ -642,3 +642,72 @@ Accept: application/json
   "department": "Unknown",
   "owner": "Vaishnavi Bachhav"
 }
+
+
+### Register employee
+POST {{DocuTrack.Api_HostAddress}}/api/auth/register
+Content-Type: application/json
+Accept: application/json
+
+{
+  "fullName": "Test Employee",
+  "email": "employee@doctrack.com",
+  "password": "Employee@123"
+}
+
+###
+
+### Duplicate registration
+### Expected: 409 Conflict
+
+POST {{DocuTrack.Api_HostAddress}}/api/auth/register
+Content-Type: application/json
+Accept: application/json
+
+{
+  "fullName": "Test Employee",
+  "email": "employee@doctrack.com",
+  "password": "Employee@123"
+}
+
+###
+
+### Valid login
+### Expected: 200 OK
+
+POST {{DocuTrack.Api_HostAddress}}/api/auth/login
+Content-Type: application/json
+Accept: application/json
+
+{
+  "email": "employee@doctrack.com",
+  "password": "Employee@123"
+}
+
+###
+
+### Incorrect password
+### Expected: 401 Unauthorized
+
+POST {{DocuTrack.Api_HostAddress}}/api/auth/login
+Content-Type: application/json
+Accept: application/json
+
+{
+  "email": "employee@doctrack.com",
+  "password": "WrongPassword@123"
+}
+
+###
+
+### Unknown email
+### Expected: 401 Unauthorized
+
+POST {{DocuTrack.Api_HostAddress}}/api/auth/login
+Content-Type: application/json
+Accept: application/json
+
+{
+  "email": "missing@doctrack.com",
+  "password": "Employee@123"
+}

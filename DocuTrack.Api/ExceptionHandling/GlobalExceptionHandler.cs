@@ -89,6 +89,20 @@ namespace DocuTrack.Api.ExceptionHandling
                         "An unexpected database error occurred.",
                         "https://httpstatuses.com/500"),
 
+                AuthenticationFailedException authenticationException =>
+                    CreateProblemDetails(
+                        StatusCodes.Status401Unauthorized,
+                        "Authentication failed",
+                        authenticationException.Message,
+                        "https://httpstatuses.com/401"),
+
+                UserAlreadyExistsException existingUserException =>
+                    CreateProblemDetails(
+                        StatusCodes.Status409Conflict,
+                        "User already exists",
+                        existingUserException.Message,
+                        "https://httpstatuses.com/409"),
+
                 _ =>
                     CreateProblemDetails(
                         StatusCodes.Status500InternalServerError,
@@ -125,6 +139,21 @@ namespace DocuTrack.Api.ExceptionHandling
                     _logger.LogError(
                         exception,
                         "Database unavailable while processing {Method} {Path}",
+                        context.Request.Method,
+                        context.Request.Path);
+                    break;
+
+                case AuthenticationFailedException:
+                    _logger.LogInformation(
+                        "Authentication failed for {Method} {Path}",
+                        context.Request.Method,
+                        context.Request.Path);
+                    break;
+
+                case UserAlreadyExistsException:
+                    _logger.LogInformation(
+                        exception,
+                        "Registration conflict for {Method} {Path}",
                         context.Request.Method,
                         context.Request.Path);
                     break;

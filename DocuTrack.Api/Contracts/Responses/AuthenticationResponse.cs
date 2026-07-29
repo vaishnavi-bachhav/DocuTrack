@@ -1,0 +1,12 @@
+﻿namespace DocuTrack.Api.Contracts.Responses
+{
+    public class AuthenticationResponse
+    {
+        public required string AccessToken { get; init; }
+        public required DateTimeOffset ExpiresAt { get; init; }
+        public required Guid UserId { get; init; }
+        public required string Email { get; init; }
+        public required string FullName { get; init; }
+        public required IReadOnlyCollection<string> Roles { get; init; }
+    }
+}

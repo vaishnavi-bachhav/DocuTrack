@@ -4,10 +4,12 @@ using DocuTrack.Core.Enums;
 using DocuTrack.Core.Models;
 using DocuTrack.Core.Requests;
 using DocuTrack.Core.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace DocuTrack.Api.Controllers
 {
+    [Authorize]
     [Route("api/[controller]")]
     [ApiController]
     public sealed class DocumentsController : ControllerBase
@@ -190,6 +192,7 @@ namespace DocuTrack.Api.Controllers
             return Ok(MapToResponse(document));
         }
 
+        [Authorize(Roles = "Reviewer,Admin")]
         [HttpPatch("{id:guid}/status")]
         public async Task<ActionResult<DocumentResponse>> ChangeDocumentStatus(Guid id, [FromBody] ChangeDocumentStatusApiRequest request, CancellationToken cancellationToken)
         {
@@ -211,6 +214,7 @@ namespace DocuTrack.Api.Controllers
             return Ok(MapToResponse(updateDocument));
         }
 
+        [Authorize(Roles = "Admin")]
         [HttpDelete("{id:guid}")]
         public async Task<IActionResult> DeleteDocument(Guid id, CancellationToken cancellationToken)
         {
