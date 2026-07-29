@@ -18,17 +18,21 @@ builder.Services.AddControllers().AddJsonOptions(options  =>
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
 
-string connectionString = builder.Configuration.GetConnectionString("DocuTrackDb")
-        ?? throw new InvalidOperationException(
-        "Connection string 'DocuTrackDb' was not found.");
-
 builder.Services.AddProblemDetails();
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 
-builder.Services.AddDbContext<DocuTrackDbContext>(options =>
+if (!builder.Environment.IsEnvironment("Testing"))
 {
-    options.UseSqlServer(connectionString);
-});
+    string connectionString = builder.Configuration.GetConnectionString("DocuTrackDb")
+        ?? throw new InvalidOperationException(
+            "Connection string 'DocuTrackDb' was not found.");
+
+    builder.Services.AddDbContext<DocuTrackDbContext>(
+        options =>
+        {
+            options.UseSqlServer(connectionString);
+        });
+}
 
 builder.Services.AddScoped<IDocumentRepository, EfDocumentRepository>();
 builder.Services.AddScoped<DocumentService>();
@@ -57,3 +61,5 @@ app.UseAuthorization();
 app.MapControllers();
 
 app.Run();
+
+public partial class Program;
