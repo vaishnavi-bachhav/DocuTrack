@@ -16,12 +16,14 @@ namespace DocuTrack.Infrastructure.Persistence.Configurations
             builder.Property(d => d.Title).IsRequired().HasMaxLength(150);
             builder.Property(d => d.Description).HasMaxLength(500);
             builder.Property(d => d.Owner).IsRequired().HasMaxLength(100);
-            builder.Property(d => d.Version).HasDefaultValue(1);
+            builder.Property(d => d.Version).IsRequired().HasDefaultValue(1).IsConcurrencyToken();
 
             builder.HasIndex(d => d.DocumentNumber).IsUnique();
             builder.HasIndex(d => d.Status);
             builder.HasIndex(d => d.Department);
             builder.HasIndex(d => d.CreatedAt);
+            builder.HasIndex(d => d.CreatedByUserId);
+            builder.HasIndex(d => d.LastModifiedByUserId);
         }
     }
 }

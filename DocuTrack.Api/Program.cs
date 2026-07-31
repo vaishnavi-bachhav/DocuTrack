@@ -12,6 +12,7 @@ using Microsoft.IdentityModel.Tokens;
 using System.Security.Claims;
 using System.Text;
 using System.Text.Json.Serialization;
+using DocuTrack.Core.Identity;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -163,6 +164,8 @@ builder.Services
 
 builder.Services.AddAuthorization();
 
+builder.Services.AddHttpContextAccessor();
+
 // ---------------------------------------------------------
 // Application Repositories
 // ---------------------------------------------------------
@@ -176,7 +179,7 @@ builder.Services.AddScoped<IDocumentRepository, EfDocumentRepository>();
 builder.Services.AddScoped<DocumentService>();
 builder.Services.AddScoped<IAuthenticationService, AuthenticationService>();
 builder.Services.AddScoped<IJwtTokenGenerator, JwtTokenGenerator>();
-
+builder.Services.AddScoped<ICurrentUser, CurrentUser>();
 
 // ---------------------------------------------------------
 // Build application

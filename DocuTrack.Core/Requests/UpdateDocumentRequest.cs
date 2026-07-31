@@ -9,5 +9,6 @@ namespace DocuTrack.Core.Requests
         public DocumentType DocumentType { get; init; }
         public Department Department { get; init; }
         public required string Owner { get; init; }
+        public int Version { get; init; }
     }
 }

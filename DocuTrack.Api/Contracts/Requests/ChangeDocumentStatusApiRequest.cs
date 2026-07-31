@@ -2,8 +2,9 @@
 
 namespace DocuTrack.Api.Contracts.Requests
 {
-    public class ChangeDocumentStatusApiRequest
+    public sealed class ChangeDocumentStatusApiRequest
     {
-        public DocumentStatus NewStatus { get; set; }
+        public DocumentStatus NewStatus { get; init; }
+        public int Version { get; init; }
     }
 }

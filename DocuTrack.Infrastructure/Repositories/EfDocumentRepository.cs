@@ -72,9 +72,10 @@ namespace DocuTrack.Infrastructure.Repositories
             }
         }
 
-        public async Task<Document> UpdateAsync(Document document, CancellationToken cancellationToken = default)
+        public async Task<Document> UpdateAsync(Document document, int expectedVersion, CancellationToken cancellationToken = default)
         {
             ArgumentNullException.ThrowIfNull(document);
+            _context.Entry(document).Property(item => item.Version).OriginalValue = expectedVersion;
             await SaveChangesAsync(document.Id, cancellationToken);
             return document;
         }
@@ -157,6 +158,12 @@ namespace DocuTrack.Infrastructure.Repositories
                 HasPreviousPage = documentQuery.PageNumber > 1,
                 HasNextPage = documentQuery.PageNumber < totalPages
             };
+        }
+
+        public void SetOriginalVersion(Document document, int originalVersion)
+        {
+            ArgumentNullException.ThrowIfNull(document);
+            _context.Entry(document).Property(p => p.Version).OriginalValue = originalVersion;    
         }
 
         private static IQueryable<Document> ApplySorting(DocumentQuery documentQuery, IQueryable<Document> query)

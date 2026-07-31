@@ -73,13 +73,16 @@ namespace DocuTrack.Api.IntegrationTests
         {
             Document document = await SeedDocumentAsync(DocumentStatus.Draft);
 
+            using HttpClient reviewerClient = CreateReviewerClient();
+
             HttpResponseMessage getResponse = await _client.GetAsync($"/api/documents/{document.Id}");
 
             getResponse.StatusCode.Should().Be(HttpStatusCode.OK);
 
             var request = new
             {
-                newStatus = "Approved"
+                newStatus = "Approved",
+                version = 1
             };
 
             HttpResponseMessage response = await _client.PatchAsJsonAsync($"/api/documents/{document.Id}/status", request);
@@ -95,6 +98,8 @@ namespace DocuTrack.Api.IntegrationTests
         {
             Document document = await SeedDocumentAsync(DocumentStatus.Approved);
 
+            using HttpClient adminClient = 
+                CreateAdminClient();
             HttpResponseMessage response = await _client.DeleteAsync($"/api/documents/{document.Id}");
 
             response.StatusCode.Should().Be(HttpStatusCode.Conflict);
@@ -105,6 +110,8 @@ namespace DocuTrack.Api.IntegrationTests
         public async Task DeleteDocument_DraftDocument_ReturnsNoContent()
         {
             Document document = await SeedDocumentAsync(DocumentStatus.Draft);
+            using HttpClient adminClient =
+        CreateAdminClient();
 
             HttpResponseMessage response = await _client.DeleteAsync($"/api/documents/{document.Id}");
 
@@ -124,9 +131,12 @@ namespace DocuTrack.Api.IntegrationTests
         {
             Document document = await SeedDocumentAsync(DocumentStatus.Draft);
 
+            using HttpClient reviewerClient = CreateReviewerClient();
+
             var request = new
             {
-                newStatus = "Uploaded"
+                newStatus = "Uploaded",
+                version = 1
             };
 
             HttpResponseMessage response = await _client.PatchAsJsonAsync($"/api/documents/{document.Id}/status",request);
@@ -205,7 +215,8 @@ namespace DocuTrack.Api.IntegrationTests
                 description = "Updated description",
                 documentType = "Invoice",
                 department = "Legal",
-                owner = "Updated Owner"
+                owner = "Updated Owner",
+                version = 1
             };
 
             HttpResponseMessage response =
@@ -239,7 +250,8 @@ namespace DocuTrack.Api.IntegrationTests
                 description = "Description",
                 documentType = "Contract",
                 department = "Purchasing",
-                owner = "Test Owner"
+                owner = "Test Owner",
+                version = 1
             };
 
             HttpResponseMessage response =
@@ -278,14 +290,19 @@ namespace DocuTrack.Api.IntegrationTests
         [Fact]
         public async Task ChangeStatus_MissingDocument_ReturnsNotFound()
         {
+            using HttpClient reviewerClient = CreateReviewerClient();
+
+            Guid missingId = Guid.NewGuid();
+
             var request = new
             {
-                newStatus = "Uploaded"
+                newStatus = "Uploaded",
+                version = 1
             };
 
             HttpResponseMessage response =
                 await _client.PatchAsJsonAsync(
-                    $"/api/documents/{Guid.NewGuid()}/status",
+                    $"/api/documents/{missingId}/status",
                     request);
 
             response.StatusCode.Should()
@@ -294,6 +311,9 @@ namespace DocuTrack.Api.IntegrationTests
         [Fact]
         public async Task DeleteDocument_MissingDocument_ReturnsNotFound()
         {
+            using HttpClient adminClient =
+       CreateAdminClient();
+
             HttpResponseMessage response =
                 await _client.DeleteAsync(
                     $"/api/documents/{Guid.NewGuid()}");
@@ -301,6 +321,69 @@ namespace DocuTrack.Api.IntegrationTests
             response.StatusCode.Should()
                 .Be(HttpStatusCode.NotFound);
         }
+
+        [Fact]
+        public async Task UpdateDocument_StaleVersion_ReturnsConflict()
+        {
+            Document document =
+                await SeedDocumentAsync(
+                    DocumentStatus.Draft);
+
+            var firstUpdate = new
+            {
+                title = "First update",
+                description = "First",
+                documentType = "Contract",
+                department = "Purchasing",
+                owner = "User One",
+                version = 1
+            };
+
+            HttpResponseMessage firstResponse =
+                await _client.PutAsJsonAsync(
+                    $"/api/documents/{document.Id}",
+                    firstUpdate);
+
+            firstResponse.StatusCode.Should()
+                .Be(HttpStatusCode.OK);
+
+            var staleUpdate = new
+            {
+                title = "Stale update",
+                description = "Second",
+                documentType = "Contract",
+                department = "Purchasing",
+                owner = "User Two",
+                version = 1
+            };
+
+            HttpResponseMessage staleResponse =
+                await _client.PutAsJsonAsync(
+                    $"/api/documents/{document.Id}",
+                    staleUpdate);
+
+            staleResponse.StatusCode.Should()
+                .Be(HttpStatusCode.Conflict);
+        }
+
+        [Fact]
+        public async Task DeleteDocument_AdminUser_ReturnsNoContent()
+        {
+            Document document =
+                await SeedDocumentAsync(
+                    DocumentStatus.Draft);
+
+            using HttpClient adminClient =
+                CreateAdminClient();
+
+            HttpResponseMessage response =
+                await adminClient.DeleteAsync(
+                    $"/api/documents/{document.Id}");
+
+            response.StatusCode.Should()
+                .Be(HttpStatusCode.NoContent);
+        }
+
         private async Task<Document> SeedDocumentAsync(DocumentStatus status)
         {
             using IServiceScope scope = _factory.Services.CreateScope();
@@ -329,5 +412,29 @@ namespace DocuTrack.Api.IntegrationTests
 
             return document;
         }
+
+        private HttpClient CreateAdminClient()
+        {
+            HttpClient client = _factory.CreateClient();
+
+            client.DefaultRequestHeaders.Add(
+                "X-Test-Role",
+                "Admin");
+
+            return client;
+        }
+
+        private HttpClient CreateReviewerClient()
+        {
+            HttpClient client = _factory.CreateClient();
+
+            client.DefaultRequestHeaders.Add(
+                "X-Test-Role",
+                "Reviewer");
+
+            return client;
+        }
     }
+
+
 }

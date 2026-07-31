@@ -173,6 +173,10 @@ namespace DocuTrack.Api.Controllers
             {
                 ModelState.AddModelError(nameof(request.Owner), "Owner cannot contain only whitespace.");
             }
+            if (request.Version < 1)
+            {
+                ModelState.AddModelError(nameof(request.Version), "Version must be greater than or equal to 1.");
+            }
             if (!ModelState.IsValid)
             {
                 return ValidationProblem(ModelState);
@@ -186,6 +190,7 @@ namespace DocuTrack.Api.Controllers
                 DocumentType = request.DocumentType,
                 Department = request.Department,
                 Owner = request.Owner.Trim(),
+                Version = request.Version
             };
 
             Document document = await _documentService.UpdateDocumentAsync(id, updateDocumentRequest, cancellationToken);
@@ -208,7 +213,8 @@ namespace DocuTrack.Api.Controllers
             Document updateDocument = await _documentService.ChangeDocumentStatusAsync(new ChangeDocumentStatusRequest
             {
                 DocumentId = id,
-                NewStatus = request.NewStatus
+                NewStatus = request.NewStatus,
+                Version = request.Version
             }, cancellationToken);
 
             return Ok(MapToResponse(updateDocument));
@@ -239,7 +245,9 @@ namespace DocuTrack.Api.Controllers
                 Status = document.Status,
                 CreatedDate = document.CreatedAt,
                 LastUpdatedDate = document.LastUpdatedAt,
-                Version = document.Version
+                Version = document.Version,
+                CreatedByUserId = document.CreatedByUserId,
+                LastModifiedByUserId = document.LastModifiedByUserId
             };
         }
     }

@@ -14,6 +14,8 @@ namespace DocuTrack.Api.Contracts.Responses
         public DocumentStatus Status { get; init; }
         public DateTimeOffset CreatedDate { get; init; }
         public DateTimeOffset LastUpdatedDate { get; init; }
+        public Guid CreatedByUserId { get; init; }
+        public Guid? LastModifiedByUserId { get; init; }
         public int Version { get; init; }
     }
 }

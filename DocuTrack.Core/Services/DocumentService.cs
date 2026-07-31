@@ -3,17 +3,19 @@ using DocuTrack.Core.Repositories;
 using DocuTrack.Core.Requests;
 using DocuTrack.Core.Enums;
 using DocuTrack.Core.Exceptions;
+using DocuTrack.Core.Identity;
 
 namespace DocuTrack.Core.Services
 {
     public sealed class DocumentService
     {
         private readonly IDocumentRepository _documentRepository;
+        private readonly ICurrentUser _currentUser;
 
-        public DocumentService(IDocumentRepository documentRepository)
+        public DocumentService(IDocumentRepository documentRepository, ICurrentUser currentUser)
         {
-            ArgumentNullException.ThrowIfNull(documentRepository);
-            _documentRepository = documentRepository;
+            _documentRepository = documentRepository ?? throw new ArgumentNullException(nameof(documentRepository));
+            _currentUser = currentUser ?? throw new ArgumentNullException(nameof(currentUser));
         }
 
         public async Task<Document> CreateDocumentAsync(CreateDocumentRequest request, CancellationToken cancellationToken = default)
@@ -22,8 +24,14 @@ namespace DocuTrack.Core.Services
 
             ValidateDocumentDetails(request.Title, request.Owner, request.DocumentType, request.Department);
 
+            if (!_currentUser.IsAuthenticated)
+            {
+                throw new InvalidOperationException("An authenticated user is required to create a document.");
+            }
+
             long nextNumber = await _documentRepository.GetNextDocumentNumberAsync(cancellationToken);
             DateTimeOffset now = DateTimeOffset.UtcNow;
+            Guid userId = _currentUser.UserId;
 
             var document = new Document
             {
@@ -37,6 +45,8 @@ namespace DocuTrack.Core.Services
                 Status = DocumentStatus.Draft,
                 CreatedAt = now,
                 LastUpdatedAt = now,
+                CreatedByUserId = userId,
+                LastModifiedByUserId = userId,
                 Version = 1
             };
             return await _documentRepository.AddAsync(document, cancellationToken);
@@ -66,6 +76,11 @@ namespace DocuTrack.Core.Services
 
             ValidateDocumentDetails(request.Title, request.Owner, request.DocumentType, request.Department);
 
+            if (request.Version < 1)
+            {
+                throw new DomainValidationException("Version must be greater than or equal to 1.");
+            }
+
             Document existingDocument = await GetDocumentForUpdateAsync(id, cancellationToken);
 
             existingDocument.Title = request.Title;
@@ -73,10 +88,11 @@ namespace DocuTrack.Core.Services
             existingDocument.Type = request.DocumentType;
             existingDocument.Department = request.Department;
             existingDocument.Owner = request.Owner;
+            existingDocument.LastModifiedByUserId = _currentUser.UserId;
             existingDocument.LastUpdatedAt = DateTimeOffset.UtcNow;
-            existingDocument.Version++;
+            existingDocument.Version = request.Version + 1;
 
-            return await _documentRepository.UpdateAsync(existingDocument, cancellationToken);
+            return await _documentRepository.UpdateAsync(existingDocument, request.Version, cancellationToken);
         }
 
         private static void ValidateDocumentDetails(string title, string owner, DocumentType documentType, Department department)
@@ -103,6 +119,11 @@ namespace DocuTrack.Core.Services
         {
             ArgumentNullException.ThrowIfNull(request);
 
+            if (request.Version < 1)
+            {
+                throw new DomainValidationException("Version must be greater than or equal to 1.");
+            }
+
             if (request.NewStatus == DocumentStatus.Unknown)
             {
                 throw new DomainValidationException("A valid new document status is required.");
@@ -116,10 +137,11 @@ namespace DocuTrack.Core.Services
             }
             
             existingDocument.Status = request.NewStatus;
+            existingDocument.LastModifiedByUserId = _currentUser.UserId;
             existingDocument.LastUpdatedAt = DateTimeOffset.UtcNow;
-            existingDocument.Version++;
+            existingDocument.Version = request.Version + 1;
 
-            return await _documentRepository.UpdateAsync(existingDocument, cancellationToken);
+            return await _documentRepository.UpdateAsync(existingDocument, request.Version, cancellationToken);
         }
 
         public async Task DeleteDocumentAsync(Guid id, CancellationToken cancellationToken = default)

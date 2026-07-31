@@ -6,5 +6,6 @@ namespace DocuTrack.Core.Requests
     {
         public Guid DocumentId { get; init; }
         public DocumentStatus NewStatus { get; init; }
+        public int Version { get; init; }
     }
 }
