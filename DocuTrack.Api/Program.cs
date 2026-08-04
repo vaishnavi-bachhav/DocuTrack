@@ -180,6 +180,7 @@ builder.Services.AddScoped<DocumentService>();
 builder.Services.AddScoped<IAuthenticationService, AuthenticationService>();
 builder.Services.AddScoped<IJwtTokenGenerator, JwtTokenGenerator>();
 builder.Services.AddScoped<ICurrentUser, CurrentUser>();
+builder.Services.AddScoped<IIdentityTransactionFactory, EfIdentityTransactionFactory>();
 
 // ---------------------------------------------------------
 // Build application

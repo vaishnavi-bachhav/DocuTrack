@@ -2,6 +2,7 @@
 using DocuTrack.Api.Contracts.Responses;
 using DocuTrack.Core.Enums;
 using DocuTrack.Core.Exceptions;
+using DocuTrack.Core.Identity;
 using DocuTrack.Infrastructure.Identity;
 using Microsoft.AspNetCore.Identity;
 
@@ -12,12 +13,22 @@ namespace DocuTrack.Api.Identity
         private string DefaultRole = UserRole.Employee.ToString();
 
         private readonly UserManager<ApplicationUser> _userManager;
+        private readonly SignInManager<ApplicationUser> _signInManager;
         private readonly IJwtTokenGenerator _jwtTokenGenerator;
+        private readonly IIdentityTransactionFactory _transactionFactory;
+        private readonly ILogger<AuthenticationService> _logger;
 
-        public AuthenticationService(UserManager<ApplicationUser> userManager, IJwtTokenGenerator jwtTokenGenerator)
+        public AuthenticationService(UserManager<ApplicationUser> userManager, 
+            SignInManager<ApplicationUser> signInManager,
+            IJwtTokenGenerator jwtTokenGenerator,
+            IIdentityTransactionFactory transactionFactory,
+            ILogger<AuthenticationService> logger)
         {
             _userManager = userManager ?? throw new ArgumentNullException(nameof(userManager));
+            _signInManager = signInManager ?? throw new ArgumentNullException(nameof(signInManager));
             _jwtTokenGenerator = jwtTokenGenerator ?? throw new ArgumentNullException(nameof(jwtTokenGenerator));
+            _transactionFactory = transactionFactory ?? throw new ArgumentNullException(nameof(transactionFactory));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
         public async Task<AuthenticationResponse> RegisterAsync(RegisterApiRequest request, CancellationToken cancellationToken = default)
@@ -32,40 +43,57 @@ namespace DocuTrack.Api.Identity
 
             ApplicationUser? existingUser = await _userManager.FindByEmailAsync(email);
 
-            if (existingUser is not null)
+            if (existingUser != null)
             {
                 throw new UserAlreadyExistsException(email);
             }
 
-            ApplicationUser user = new()
-            {
-                Id = Guid.NewGuid(),
-                FullName = fullName,
-                UserName = email,
-                Email = email,
-                EmailConfirmed = false,
-                CreatedAt = DateTimeOffset.UtcNow
-            };
+            await using IIdentityTransaction transaction = await _transactionFactory.BeginAsync(cancellationToken);
 
-            IdentityResult createResult = await _userManager.CreateAsync(user, request.Password);
-
-            if (!createResult.Succeeded)
+            try
             {
-                throw CreateValidationException(createResult.Errors);
+                ApplicationUser user = new()
+                {
+                    Id = Guid.NewGuid(),
+                    FullName = fullName,
+                    UserName = email,
+                    Email = email,
+                    EmailConfirmed = true,
+                    CreatedAt = DateTimeOffset.UtcNow
+                };
+                IdentityResult createResult = await _userManager.CreateAsync(user, request.Password);
+                if (!createResult.Succeeded)
+                {
+                    // Use the existing CreateValidationException helper
+                    throw CreateValidationException(createResult.Errors);
+                }
+
+                cancellationToken.ThrowIfCancellationRequested();
+
+                IdentityResult roleResult = await _userManager.AddToRoleAsync(user, DefaultRole);
+
+                if (!roleResult.Succeeded)
+                {
+                    throw CreateRegistrationException(
+                                       $"The user could not be assigned to the '{DefaultRole}' role.",
+                                       roleResult.Errors);
+                }
+
+                await transaction.CommitAsync(cancellationToken);
+
+                _logger.LogInformation(
+                    "User {UserId} registered successfully with role {Role}",
+                    user.Id,
+                    DefaultRole);
+
+                return await _jwtTokenGenerator.GenerateAsync(user, cancellationToken);
+
             }
-
-            cancellationToken.ThrowIfCancellationRequested();
-
-            IdentityResult roleResult = await _userManager.AddToRoleAsync(user, DefaultRole);
-
-            if (!roleResult.Succeeded)
+            catch (Exception)
             {
-                await TryDeleteUserAsync(user);
-
-                throw new InvalidOperationException($"The user could not be assigned to the '{DefaultRole}' role.");
+                await transaction.RollbackAsync(CancellationToken.None);
+                throw;
             }
-
-            return await _jwtTokenGenerator.GenerateAsync(user, cancellationToken);
         }
 
         public async Task<AuthenticationResponse> LoginAsync(LoginApiRequest request, CancellationToken cancellationToken = default)
@@ -83,21 +111,36 @@ namespace DocuTrack.Api.Identity
 
             ApplicationUser? user = await _userManager.FindByEmailAsync(email);
 
-            // Use the same response for an unknown email and an invalid password.
-            // This avoids revealing whether an account exists.
-            if (user is null)
+            // Return the same error for an unknown account and a bad
+            // password to avoid exposing whether the email is registered.
+            if (user == null)
             {
                 throw new AuthenticationFailedException();
             }
 
-            bool isPasswordValid = await _userManager.CheckPasswordAsync(user, request.Password);
+            SignInResult signInResult = await _signInManager.CheckPasswordSignInAsync(user, request.Password, lockoutOnFailure: true);
 
-            if (!isPasswordValid)
+            if (signInResult.IsLockedOut)
             {
+                _logger.LogWarning("Login blocked because user {UserId} is locked out", user.Id);
+
+                throw new AccountLockedException();
+            }
+
+            if (signInResult.IsNotAllowed)
+            {
+                _logger.LogInformation("Login not allowed for user {UserId}", user.Id);
+
                 throw new AuthenticationFailedException();
             }
 
-            cancellationToken.ThrowIfCancellationRequested();
+            if (!signInResult.Succeeded)
+            {
+                _logger.LogInformation("Invalid login attempt for user {UserId}", user.Id);
+                throw new AuthenticationFailedException();
+            }
+
+            _logger.LogInformation("User {UserId} authenticated successfully", user.Id);
 
             return await _jwtTokenGenerator.GenerateAsync(user, cancellationToken);
         }
@@ -120,6 +163,20 @@ namespace DocuTrack.Api.Identity
             }
         }
 
+        private static UserRegistrationException CreateRegistrationException(string generalMessage, IEnumerable<IdentityError> errors)
+        {
+            string details = string.Join(
+                "; ",
+                errors.Select(error => error.Description));
+
+            string message =
+                string.IsNullOrWhiteSpace(details)
+                    ? generalMessage
+                    : $"{generalMessage} {details}";
+
+            return new UserRegistrationException(message);
+        }
+
         private static DomainValidationException CreateValidationException(IEnumerable<IdentityError> errors)
         {
             string message = string.Join(
@@ -132,20 +189,6 @@ namespace DocuTrack.Api.Identity
             }
 
             return new DomainValidationException(message);
-        }
-
-        private async Task TryDeleteUserAsync(ApplicationUser user)
-        {
-            try
-            {
-                await _userManager.DeleteAsync(user);
-            }
-            catch
-            {
-                // The original role-assignment failure should remain
-                // the primary error. Log this cleanup failure later
-                // using ILogger if needed.
-            }
         }
     }
 }

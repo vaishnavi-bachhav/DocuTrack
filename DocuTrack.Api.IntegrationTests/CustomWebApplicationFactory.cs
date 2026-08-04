@@ -1,4 +1,5 @@
 ﻿using DocuTrack.Api.IntegrationTests.Authentication;
+using DocuTrack.Core.Identity;
 using DocuTrack.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Hosting;
@@ -62,6 +63,12 @@ public sealed class CustomWebApplicationFactory
         services.RemoveAll<
             IDbContextOptionsConfiguration<
                 DocuTrackDbContext>>();
+
+        services.RemoveAll<IIdentityTransactionFactory>();
+
+        services.AddSingleton<
+            IIdentityTransactionFactory,
+            TestIdentityTransactionFactory>();
 
         services.AddDbContext<DocuTrackDbContext>(
             options =>

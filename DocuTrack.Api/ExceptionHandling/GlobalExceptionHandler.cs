@@ -103,6 +103,20 @@ namespace DocuTrack.Api.ExceptionHandling
                         existingUserException.Message,
                         "https://httpstatuses.com/409"),
 
+                AccountLockedException lockedException =>
+                    CreateProblemDetails(
+                        StatusCodes.Status423Locked,
+                        "Account locked",
+                        lockedException.Message,
+                        "https://httpstatuses.com/423"),
+
+                UserRegistrationException registrationException =>
+                    CreateProblemDetails(
+                        StatusCodes.Status400BadRequest,
+                        "Registration failed",
+                        registrationException.Message,
+                        "https://httpstatuses.com/400"),
+
                 _ =>
                     CreateProblemDetails(
                         StatusCodes.Status500InternalServerError,
@@ -154,6 +168,22 @@ namespace DocuTrack.Api.ExceptionHandling
                     _logger.LogInformation(
                         exception,
                         "Registration conflict for {Method} {Path}",
+                        context.Request.Method,
+                        context.Request.Path);
+                    break;
+
+                case AccountLockedException:
+                    _logger.LogWarning(
+                        exception,
+                        "Locked account attempted authentication for {Method} {Path}",
+                        context.Request.Method,
+                        context.Request.Path);
+                    break;
+
+                case UserRegistrationException:
+                    _logger.LogWarning(
+                        exception,
+                        "User registration failed for {Method} {Path}",
                         context.Request.Method,
                         context.Request.Path);
                     break;
