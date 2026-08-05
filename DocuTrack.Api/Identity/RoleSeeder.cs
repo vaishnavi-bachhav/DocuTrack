@@ -1,4 +1,4 @@
-﻿using DocuTrack.Core.Enums;
+﻿using DocuTrack.Application.Authorization;
 using Microsoft.AspNetCore.Identity;
 
 namespace DocuTrack.Api.Identity
@@ -7,9 +7,9 @@ namespace DocuTrack.Api.Identity
     {
         private static readonly string[] Roles =
         [
-            UserRole.Admin.ToString(),
-            UserRole.Reviewer.ToString(),
-            UserRole.Employee.ToString(),
+            ApplicationRoles.Admin,
+            ApplicationRoles.Reviewer,
+            ApplicationRoles.Employee
         ];
 
         public static async Task SeedAsync(IServiceProvider serviceProvider)

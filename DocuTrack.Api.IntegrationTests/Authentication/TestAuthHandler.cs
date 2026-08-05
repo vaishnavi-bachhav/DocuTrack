@@ -9,13 +9,22 @@ namespace DocuTrack.Api.IntegrationTests.Authentication;
 public sealed class TestAuthHandler
     : AuthenticationHandler<AuthenticationSchemeOptions>
 {
-    public const string AuthenticationScheme = "TestScheme";
+    public const string SchemeName = "DocuTrackTestScheme";
 
     public const string DefaultUserId =
         "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa";
 
     public const string DefaultEmail =
         "integration-test@doctrack.com";
+
+    public const string EmployeeRole = "Employee";
+    public const string ReviewerRole = "Reviewer";
+    public const string AdminRole = "Admin";
+
+    public const string RoleHeader = "X-Test-Role";
+    public const string UserIdHeader = "X-Test-UserId";
+    public const string EmailHeader = "X-Test-Email";
+    public const string AnonymousHeader = "X-Test-Anonymous";
 
     public TestAuthHandler(
         IOptionsMonitor<AuthenticationSchemeOptions> options,
@@ -29,10 +38,10 @@ public sealed class TestAuthHandler
         HandleAuthenticateAsync()
     {
         if (Request.Headers.TryGetValue(
-                "X-Test-Anonymous",
-                out var anonymousHeader) &&
+                AnonymousHeader,
+                out var anonymousValue) &&
             string.Equals(
-                anonymousHeader.ToString(),
+                anonymousValue.ToString(),
                 "true",
                 StringComparison.OrdinalIgnoreCase))
         {
@@ -40,65 +49,52 @@ public sealed class TestAuthHandler
                 AuthenticateResult.NoResult());
         }
 
+        string userId =
+            GetHeaderValue(
+                UserIdHeader,
+                DefaultUserId);
+
+        string email =
+            GetHeaderValue(
+                EmailHeader,
+                DefaultEmail);
+
+        string rolesValue =
+            GetHeaderValue(
+                RoleHeader,
+                EmployeeRole);
+
         List<Claim> claims =
         [
-            new Claim(
+            new(
                 ClaimTypes.NameIdentifier,
-                DefaultUserId),
+                userId),
 
-            new Claim(
+            new(
                 ClaimTypes.Name,
-                DefaultEmail),
+                email),
 
-            new Claim(
+            new(
                 ClaimTypes.Email,
-                DefaultEmail)
+                email)
         ];
 
-        if (Request.Headers.TryGetValue(
-                "X-Test-Role",
-                out var roleHeader) &&
-            !string.IsNullOrWhiteSpace(roleHeader.ToString()))
+        string[] roles = rolesValue.Split(
+            ',',
+            StringSplitOptions.RemoveEmptyEntries |
+            StringSplitOptions.TrimEntries);
+
+        foreach (string role in roles)
         {
-            string[] requestedRoles =
-                roleHeader
-                    .ToString()
-                    .Split(
-                        ',',
-                        StringSplitOptions.RemoveEmptyEntries |
-                        StringSplitOptions.TrimEntries);
-
-            foreach (string role in requestedRoles)
-            {
-                claims.Add(
-                    new Claim(
-                        ClaimTypes.Role,
-                        role));
-            }
-        }
-        else
-        {
-            // Default integration-test user has every role.
-            // This allows business-behavior tests to reach the service.
             claims.Add(
                 new Claim(
                     ClaimTypes.Role,
-                    "Employee"));
-
-            claims.Add(
-                new Claim(
-                    ClaimTypes.Role,
-                    "Reviewer"));
-
-            claims.Add(
-                new Claim(
-                    ClaimTypes.Role,
-                    "Admin"));
+                    role));
         }
 
         ClaimsIdentity identity = new(
             claims,
-            AuthenticationScheme,
+            SchemeName,
             ClaimTypes.Name,
             ClaimTypes.Role);
 
@@ -106,9 +102,24 @@ public sealed class TestAuthHandler
 
         AuthenticationTicket ticket = new(
             principal,
-            AuthenticationScheme);
+            SchemeName);
 
         return Task.FromResult(
             AuthenticateResult.Success(ticket));
+    }
+
+    private string GetHeaderValue(
+        string headerName,
+        string defaultValue)
+    {
+        if (Request.Headers.TryGetValue(
+                headerName,
+                out var value) &&
+            !string.IsNullOrWhiteSpace(value.ToString()))
+        {
+            return value.ToString();
+        }
+
+        return defaultValue;
     }
 }

@@ -5,6 +5,8 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <UserSecretsId>576b35c6-8f01-47f2-bb8d-bb0ef75fd172</UserSecretsId>
+	<GenerateDocumentationFile>true</GenerateDocumentationFile>
+	<NoWarn>$(NoWarn);1591</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>
@@ -20,7 +22,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\DocuTrack.Core\DocuTrack.Core.csproj" />
+    <ProjectReference Include="..\DocuTrack.Application\DocuTrack.Application.csproj" />
     <ProjectReference Include="..\DocuTrack.Infrastructure\DocuTrack.Infrastructure.csproj" />
   </ItemGroup>
 

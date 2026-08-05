@@ -19,7 +19,8 @@
 
   <ItemGroup>
     <ProjectReference Include="..\DocuTrack.Api\DocuTrack.Api.csproj" />
-    <ProjectReference Include="..\DocuTrack.Core\DocuTrack.Core.csproj" />
+    <ProjectReference Include="..\DocuTrack.Application\DocuTrack.Application.csproj" />
+    <ProjectReference Include="..\DocuTrack.Domain\DocuTrack.Domain.csproj" />
     <ProjectReference Include="..\DocuTrack.Infrastructure\DocuTrack.Infrastructure.csproj" />
   </ItemGroup>
 

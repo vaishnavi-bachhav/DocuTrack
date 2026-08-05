@@ -1,5 +1,5 @@
-﻿using System.ComponentModel.DataAnnotations;
-using DocuTrack.Core.Enums;
+﻿using DocuTrack.Domain.Documents;
+using System.ComponentModel.DataAnnotations;
 
 namespace DocuTrack.Api.Contracts.Requests
 {

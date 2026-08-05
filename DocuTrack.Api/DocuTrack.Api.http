@@ -1,19 +1,259 @@
 @DocuTrack.Api_HostAddress = http://localhost:5257
 
+# -------------------------------------------------------------------
+# Replace these values after running the relevant requests.
+# Visual Studio/Rider HTTP files do not automatically persist response
+# values unless you add response handlers. Copy tokens and IDs manually.
+# -------------------------------------------------------------------
+
+@EmployeeToken = REPLACE-WITH-EMPLOYEE-JWT
+@ReviewerToken = REPLACE-WITH-REVIEWER-JWT
+@AdminToken = REPLACE-WITH-ADMIN-JWT
+
 @MissingId = 11111111-1111-1111-1111-111111111111
+
 @DraftId = REPLACE-WITH-DRAFT-ID
+@DraftVersion = 1
+
 @UploadedId = REPLACE-WITH-UPLOADED-ID
+@UploadedVersion = 2
+
+@UnderReviewId = REPLACE-WITH-UNDER-REVIEW-ID
+@UnderReviewVersion = 3
+
 @PendingApprovalId = REPLACE-WITH-PENDING-APPROVAL-ID
+@PendingApprovalVersion = 4
+
 @ApprovedId = REPLACE-WITH-APPROVED-ID
+@ApprovedVersion = 5
+
 @RejectedId = REPLACE-WITH-REJECTED-ID
+@RejectedVersion = 5
+
 @ArchivedId = REPLACE-WITH-ARCHIVED-ID
+@ArchivedVersion = 6
+
 
 ### =========================================================
-### CREATE VALID DOCUMENT
+### AUTHENTICATION
+### =========================================================
+
+
+### Register employee
 ### Expected: 201 Created
+POST {{DocuTrack.Api_HostAddress}}/api/auth/register
+Content-Type: application/json
+Accept: application/json
+
+{
+  "fullName": "Test Employee",
+  "email": "employee@doctrack.com",
+  "password": "Employee@123"
+}
+
+###
+
+
+### Duplicate employee registration
+### Expected: 409 Conflict
+POST {{DocuTrack.Api_HostAddress}}/api/auth/register
+Content-Type: application/json
+Accept: application/json
+
+{
+  "fullName": "Test Employee",
+  "email": "employee@doctrack.com",
+  "password": "Employee@123"
+}
+
+###
+
+
+### Register with weak password
+### Expected: 400 Bad Request
+POST {{DocuTrack.Api_HostAddress}}/api/auth/register
+Content-Type: application/json
+Accept: application/json
+
+{
+  "fullName": "Weak Password User",
+  "email": "weak@doctrack.com",
+  "password": "weak"
+}
+
+###
+
+
+### Valid employee login
+### Expected: 200 OK
+### Copy accessToken into @EmployeeToken
+POST {{DocuTrack.Api_HostAddress}}/api/auth/login
+Content-Type: application/json
+Accept: application/json
+
+{
+  "email": "employee@doctrack.com",
+  "password": "Employee@123"
+}
+
+###
+
+
+### Incorrect password
+### Expected: 401 Unauthorized
+POST {{DocuTrack.Api_HostAddress}}/api/auth/login
+Content-Type: application/json
+Accept: application/json
+
+{
+  "email": "employee@doctrack.com",
+  "password": "WrongPassword@123"
+}
+
+###
+
+
+### Unknown email
+### Expected: 401 Unauthorized
+POST {{DocuTrack.Api_HostAddress}}/api/auth/login
+Content-Type: application/json
+Accept: application/json
+
+{
+  "email": "missing@doctrack.com",
+  "password": "Employee@123"
+}
+
+###
+
+
+### Lockout attempt 1
+### Expected: 401 Unauthorized
+POST {{DocuTrack.Api_HostAddress}}/api/auth/login
+Content-Type: application/json
+Accept: application/json
+
+{
+  "email": "employee@doctrack.com",
+  "password": "WrongPassword@123"
+}
+
+###
+
+
+### Lockout attempt 2
+### Expected: 401 Unauthorized
+POST {{DocuTrack.Api_HostAddress}}/api/auth/login
+Content-Type: application/json
+Accept: application/json
+
+{
+  "email": "employee@doctrack.com",
+  "password": "WrongPassword@123"
+}
+
+###
+
+
+### Lockout attempt 3
+### Expected: 401 Unauthorized
+POST {{DocuTrack.Api_HostAddress}}/api/auth/login
+Content-Type: application/json
+Accept: application/json
+
+{
+  "email": "employee@doctrack.com",
+  "password": "WrongPassword@123"
+}
+
+###
+
+
+### Lockout attempt 4
+### Expected: 401 Unauthorized
+POST {{DocuTrack.Api_HostAddress}}/api/auth/login
+Content-Type: application/json
+Accept: application/json
+
+{
+  "email": "employee@doctrack.com",
+  "password": "WrongPassword@123"
+}
+
+###
+
+
+### Lockout attempt 5
+### Expected: 423 Locked
+POST {{DocuTrack.Api_HostAddress}}/api/auth/login
+Content-Type: application/json
+Accept: application/json
+
+{
+  "email": "employee@doctrack.com",
+  "password": "WrongPassword@123"
+}
+
+###
+
+
+### =========================================================
+### AUTHORIZATION CHECKS
 ### =========================================================
 
+
+### Anonymous document request
+### Expected: 401 Unauthorized
+GET {{DocuTrack.Api_HostAddress}}/api/documents
+Accept: application/json
+
+###
+
+
+### Employee can read documents
+### Expected: 200 OK
+GET {{DocuTrack.Api_HostAddress}}/api/documents
+Authorization: Bearer {{EmployeeToken}}
+Accept: application/json
+
+###
+
+
+### Employee cannot change document status
+### Expected: 403 Forbidden
+PATCH {{DocuTrack.Api_HostAddress}}/api/documents/{{DraftId}}/status
+Authorization: Bearer {{EmployeeToken}}
+Content-Type: application/json
+Accept: application/json
+
+{
+  "newStatus": "Uploaded",
+  "version": {{DraftVersion}}
+}
+
+###
+
+
+### Employee cannot delete a document
+### Expected: 403 Forbidden
+DELETE {{DocuTrack.Api_HostAddress}}/api/documents/{{DraftId}}
+Authorization: Bearer {{EmployeeToken}}
+Accept: application/json
+
+###
+
+
+### =========================================================
+### CREATE DOCUMENTS
+### Employee token required
+### =========================================================
+
+
+### Create valid supplier agreement
+### Expected: 201 Created
+### Copy returned id into @DraftId and version into @DraftVersion
 POST {{DocuTrack.Api_HostAddress}}/api/documents
+Authorization: Bearer {{EmployeeToken}}
 Content-Type: application/json
 Accept: application/json
 
@@ -22,17 +262,16 @@ Accept: application/json
   "description": "Annual supplier agreement",
   "documentType": "Contract",
   "department": "Purchasing",
-  "owner": "Vaishnavi Bachhav"
+  "owner": "Test Employee"
 }
 
 ###
 
-### =========================================================
-### CREATE SECOND VALID DOCUMENT
-### Expected: 201 Created
-### =========================================================
 
+### Create second valid document
+### Expected: 201 Created
 POST {{DocuTrack.Api_HostAddress}}/api/documents
+Authorization: Bearer {{EmployeeToken}}
 Content-Type: application/json
 Accept: application/json
 
@@ -46,518 +285,11 @@ Accept: application/json
 
 ###
 
-### =========================================================
-### DEFAULT SEARCH AND PAGINATION
-### Expected: 200 OK
-### Defaults: page 1, page size 20
-### =========================================================
 
-GET {{DocuTrack.Api_HostAddress}}/api/documents
-Accept: application/json
-
-###
-
-### =========================================================
-### PAGE 1 WITH CUSTOM PAGE SIZE
-### Expected: 200 OK
-### =========================================================
-
-GET {{DocuTrack.Api_HostAddress}}/api/documents?pageNumber=1&pageSize=5
-Accept: application/json
-
-###
-
-### =========================================================
-### PAGE 2
-### Expected: 200 OK
-### =========================================================
-
-GET {{DocuTrack.Api_HostAddress}}/api/documents?pageNumber=2&pageSize=5
-Accept: application/json
-
-###
-
-### =========================================================
-### TEXT SEARCH
-### Searches document number, title, description and owner
-### Expected: 200 OK
-### =========================================================
-
-GET {{DocuTrack.Api_HostAddress}}/api/documents?search=supplier
-Accept: application/json
-
-###
-
-### =========================================================
-### SEARCH BY DOCUMENT NUMBER
-### Expected: 200 OK
-### =========================================================
-
-GET {{DocuTrack.Api_HostAddress}}/api/documents?search=DOC-000001
-Accept: application/json
-
-###
-
-### =========================================================
-### OWNER FILTER
-### Expected: 200 OK
-### =========================================================
-
-GET {{DocuTrack.Api_HostAddress}}/api/documents?owner=Vaishnavi
-Accept: application/json
-
-###
-
-### =========================================================
-### STATUS FILTER
-### Expected: 200 OK
-### =========================================================
-
-GET {{DocuTrack.Api_HostAddress}}/api/documents?status=Draft
-Accept: application/json
-
-###
-
-### =========================================================
-### DEPARTMENT FILTER
-### Expected: 200 OK
-### =========================================================
-
-GET {{DocuTrack.Api_HostAddress}}/api/documents?department=Purchasing
-Accept: application/json
-
-###
-
-### =========================================================
-### STATUS AND DEPARTMENT FILTER
-### Expected: 200 OK
-### =========================================================
-
-GET {{DocuTrack.Api_HostAddress}}/api/documents?status=Draft&department=Purchasing
-Accept: application/json
-
-###
-
-### =========================================================
-### CREATED-FROM FILTER
-### Expected: 200 OK
-### =========================================================
-
-GET {{DocuTrack.Api_HostAddress}}/api/documents?createdFrom=2026-01-01T00:00:00Z
-Accept: application/json
-
-###
-
-### =========================================================
-### CREATED-TO FILTER
-### Expected: 200 OK
-### =========================================================
-
-GET {{DocuTrack.Api_HostAddress}}/api/documents?createdTo=2026-12-31T23:59:59Z
-Accept: application/json
-
-###
-
-### =========================================================
-### CREATED DATE RANGE
-### Expected: 200 OK
-### =========================================================
-
-GET {{DocuTrack.Api_HostAddress}}/api/documents?createdFrom=2026-01-01T00:00:00Z&createdTo=2026-12-31T23:59:59Z
-Accept: application/json
-
-###
-
-### =========================================================
-### SORT BY TITLE ASCENDING
-### Expected: 200 OK
-### =========================================================
-
-GET {{DocuTrack.Api_HostAddress}}/api/documents?sortBy=Title&sortDirection=Ascending
-Accept: application/json
-
-###
-
-### =========================================================
-### SORT BY TITLE DESCENDING
-### Expected: 200 OK
-### =========================================================
-
-GET {{DocuTrack.Api_HostAddress}}/api/documents?sortBy=Title&sortDirection=Descending
-Accept: application/json
-
-###
-
-### =========================================================
-### SORT BY DOCUMENT NUMBER
-### Expected: 200 OK
-### =========================================================
-
-GET {{DocuTrack.Api_HostAddress}}/api/documents?sortBy=DocumentNumber&sortDirection=Ascending
-Accept: application/json
-
-###
-
-### =========================================================
-### SORT BY OWNER
-### Expected: 200 OK
-### =========================================================
-
-GET {{DocuTrack.Api_HostAddress}}/api/documents?sortBy=Owner&sortDirection=Ascending
-Accept: application/json
-
-###
-
-### =========================================================
-### SORT BY STATUS
-### Expected: 200 OK
-### =========================================================
-
-GET {{DocuTrack.Api_HostAddress}}/api/documents?sortBy=Status&sortDirection=Ascending
-Accept: application/json
-
-###
-
-### =========================================================
-### SORT BY LAST UPDATED DATE
-### Expected: 200 OK
-### =========================================================
-
-GET {{DocuTrack.Api_HostAddress}}/api/documents?sortBy=LastUpdatedAt&sortDirection=Descending
-Accept: application/json
-
-###
-
-### =========================================================
-### COMBINED SEARCH, FILTER, SORT AND PAGINATION
-### Expected: 200 OK
-### =========================================================
-
-GET {{DocuTrack.Api_HostAddress}}/api/documents?search=supplier&status=Draft&department=Purchasing&owner=Vaishnavi&pageNumber=1&pageSize=10&sortBy=CreatedAt&sortDirection=Descending
-Accept: application/json
-
-###
-
-### =========================================================
-### SEARCH WITH NO MATCHES
-### Expected: 200 OK
-### Items should be empty and totalCount should be 0
-### =========================================================
-
-GET {{DocuTrack.Api_HostAddress}}/api/documents?search=definitely-does-not-exist
-Accept: application/json
-
-###
-
-### =========================================================
-### INVALID PAGE NUMBER
+### Create with missing title
 ### Expected: 400 Bad Request
-### =========================================================
-
-GET {{DocuTrack.Api_HostAddress}}/api/documents?pageNumber=0
-Accept: application/json
-
-###
-
-### =========================================================
-### INVALID NEGATIVE PAGE NUMBER
-### Expected: 400 Bad Request
-### =========================================================
-
-GET {{DocuTrack.Api_HostAddress}}/api/documents?pageNumber=-1
-Accept: application/json
-
-###
-
-### =========================================================
-### INVALID PAGE SIZE: ZERO
-### Expected: 400 Bad Request
-### =========================================================
-
-GET {{DocuTrack.Api_HostAddress}}/api/documents?pageSize=0
-Accept: application/json
-
-###
-
-### =========================================================
-### INVALID PAGE SIZE: GREATER THAN 100
-### Expected: 400 Bad Request
-### =========================================================
-
-GET {{DocuTrack.Api_HostAddress}}/api/documents?pageSize=101
-Accept: application/json
-
-###
-
-### =========================================================
-### INVALID DATE RANGE
-### Expected: 400 Bad Request
-### =========================================================
-
-GET {{DocuTrack.Api_HostAddress}}/api/documents?createdFrom=2026-12-31T00:00:00Z&createdTo=2026-01-01T00:00:00Z
-Accept: application/json
-
-###
-
-### =========================================================
-### UNKNOWN STATUS FILTER
-### Expected: 400 Bad Request
-### =========================================================
-
-GET {{DocuTrack.Api_HostAddress}}/api/documents?status=Unknown
-Accept: application/json
-
-###
-
-### =========================================================
-### UNKNOWN DEPARTMENT FILTER
-### Expected: 400 Bad Request
-### =========================================================
-
-GET {{DocuTrack.Api_HostAddress}}/api/documents?department=Unknown
-Accept: application/json
-
-###
-
-### =========================================================
-### INVALID ENUM TEXT
-### Model binding should return 400 Bad Request
-### =========================================================
-
-GET {{DocuTrack.Api_HostAddress}}/api/documents?status=NotAStatus
-Accept: application/json
-
-###
-
-### =========================================================
-### GET EXISTING DOCUMENT
-### Expected: 200 OK
-### =========================================================
-
-GET {{DocuTrack.Api_HostAddress}}/api/documents/{{DraftId}}
-Accept: application/json
-
-###
-
-### =========================================================
-### GET MISSING DOCUMENT
-### Tests centralized DocumentNotFoundException handling
-### Expected: 404 Not Found
-### =========================================================
-
-GET {{DocuTrack.Api_HostAddress}}/api/documents/{{MissingId}}
-Accept: application/json
-
-###
-
-### =========================================================
-### UPDATE VALID DOCUMENT
-### Expected: 200 OK
-### Version should increase
-### =========================================================
-
-PUT {{DocuTrack.Api_HostAddress}}/api/documents/{{DraftId}}
-Content-Type: application/json
-Accept: application/json
-
-{
-  "title": "Updated Supplier Agreement",
-  "description": "Updated annual supplier agreement",
-  "documentType": "Contract",
-  "department": "Purchasing",
-  "owner": "Vaishnavi Bachhav"
-}
-
-###
-
-### =========================================================
-### UPDATE MISSING DOCUMENT
-### Tests centralized 404 handling
-### Expected: 404 Not Found
-### =========================================================
-
-PUT {{DocuTrack.Api_HostAddress}}/api/documents/{{MissingId}}
-Content-Type: application/json
-Accept: application/json
-
-{
-  "title": "Missing Document",
-  "description": "This document does not exist",
-  "documentType": "Contract",
-  "department": "Purchasing",
-  "owner": "Vaishnavi Bachhav"
-}
-
-###
-
-### =========================================================
-### UPDATE WITH WHITESPACE OWNER
-### Expected: 400 Bad Request
-### =========================================================
-
-PUT {{DocuTrack.Api_HostAddress}}/api/documents/{{DraftId}}
-Content-Type: application/json
-Accept: application/json
-
-{
-  "title": "Valid Title",
-  "description": "Invalid owner test",
-  "documentType": "Contract",
-  "department": "Purchasing",
-  "owner": "   "
-}
-
-###
-
-### =========================================================
-### VALID STATUS TRANSITION: DRAFT TO UPLOADED
-### Expected: 200 OK
-### =========================================================
-
-PATCH {{DocuTrack.Api_HostAddress}}/api/documents/{{DraftId}}/status
-Content-Type: application/json
-Accept: application/json
-
-{
-  "newStatus": "Uploaded"
-}
-
-###
-
-### =========================================================
-### VALID STATUS TRANSITION: UPLOADED TO UNDER REVIEW
-### Expected: 200 OK
-### =========================================================
-
-PATCH {{DocuTrack.Api_HostAddress}}/api/documents/{{UploadedId}}/status
-Content-Type: application/json
-Accept: application/json
-
-{
-  "newStatus": "UnderReview"
-}
-
-###
-
-### =========================================================
-### VALID STATUS TRANSITION: PENDING APPROVAL TO APPROVED
-### Expected: 200 OK
-### =========================================================
-
-PATCH {{DocuTrack.Api_HostAddress}}/api/documents/{{PendingApprovalId}}/status
-Content-Type: application/json
-Accept: application/json
-
-{
-  "newStatus": "Approved"
-}
-
-###
-
-### =========================================================
-### INVALID STATUS TRANSITION
-### Example: Draft to Approved
-### Tests centralized 409 handling
-### Expected: 409 Conflict
-### =========================================================
-
-PATCH {{DocuTrack.Api_HostAddress}}/api/documents/{{DraftId}}/status
-Content-Type: application/json
-Accept: application/json
-
-{
-  "newStatus": "Approved"
-}
-
-###
-
-### =========================================================
-### UNKNOWN NEW STATUS
-### Expected: 400 Bad Request
-### =========================================================
-
-PATCH {{DocuTrack.Api_HostAddress}}/api/documents/{{DraftId}}/status
-Content-Type: application/json
-Accept: application/json
-
-{
-  "newStatus": "Unknown"
-}
-
-###
-
-### =========================================================
-### CHANGE STATUS FOR MISSING DOCUMENT
-### Expected: 404 Not Found
-### =========================================================
-
-PATCH {{DocuTrack.Api_HostAddress}}/api/documents/{{MissingId}}/status
-Content-Type: application/json
-Accept: application/json
-
-{
-  "newStatus": "Uploaded"
-}
-
-###
-
-### =========================================================
-### DELETE DRAFT DOCUMENT
-### Expected: 204 No Content
-### =========================================================
-
-DELETE {{DocuTrack.Api_HostAddress}}/api/documents/{{DraftId}}
-Accept: application/json
-
-###
-
-### =========================================================
-### DELETE REJECTED DOCUMENT
-### Expected: 204 No Content
-### =========================================================
-
-DELETE {{DocuTrack.Api_HostAddress}}/api/documents/{{RejectedId}}
-Accept: application/json
-
-###
-
-### =========================================================
-### DELETE APPROVED DOCUMENT
-### Tests centralized 409 handling
-### Expected: 409 Conflict
-### =========================================================
-
-DELETE {{DocuTrack.Api_HostAddress}}/api/documents/{{ApprovedId}}
-Accept: application/json
-
-###
-
-### =========================================================
-### DELETE ARCHIVED DOCUMENT
-### Expected: 409 Conflict
-### =========================================================
-
-DELETE {{DocuTrack.Api_HostAddress}}/api/documents/{{ArchivedId}}
-Accept: application/json
-
-###
-
-### =========================================================
-### DELETE MISSING DOCUMENT
-### Expected: 404 Not Found
-### =========================================================
-
-DELETE {{DocuTrack.Api_HostAddress}}/api/documents/{{MissingId}}
-Accept: application/json
-
-###
-
-### =========================================================
-### CREATE WITH MISSING TITLE
-### Expected: 400 Bad Request
-### =========================================================
-
 POST {{DocuTrack.Api_HostAddress}}/api/documents
+Authorization: Bearer {{EmployeeToken}}
 Content-Type: application/json
 Accept: application/json
 
@@ -565,17 +297,16 @@ Accept: application/json
   "description": "Missing title test",
   "documentType": "Contract",
   "department": "Purchasing",
-  "owner": "Vaishnavi Bachhav"
+  "owner": "Test Employee"
 }
 
 ###
 
-### =========================================================
-### CREATE WITH WHITESPACE TITLE
-### Expected: 400 Bad Request
-### =========================================================
 
+### Create with whitespace title
+### Expected: 400 Bad Request
 POST {{DocuTrack.Api_HostAddress}}/api/documents
+Authorization: Bearer {{EmployeeToken}}
 Content-Type: application/json
 Accept: application/json
 
@@ -584,17 +315,16 @@ Accept: application/json
   "description": "Whitespace title test",
   "documentType": "Contract",
   "department": "Purchasing",
-  "owner": "Vaishnavi Bachhav"
+  "owner": "Test Employee"
 }
 
 ###
 
-### =========================================================
-### CREATE WITH MISSING OWNER
-### Expected: 400 Bad Request
-### =========================================================
 
+### Create with missing owner
+### Expected: 400 Bad Request
 POST {{DocuTrack.Api_HostAddress}}/api/documents
+Authorization: Bearer {{EmployeeToken}}
 Content-Type: application/json
 Accept: application/json
 
@@ -607,12 +337,29 @@ Accept: application/json
 
 ###
 
-### =========================================================
-### CREATE WITH UNKNOWN DOCUMENT TYPE
-### Expected: 400 Bad Request
-### =========================================================
 
+### Create with whitespace owner
+### Expected: 400 Bad Request
 POST {{DocuTrack.Api_HostAddress}}/api/documents
+Authorization: Bearer {{EmployeeToken}}
+Content-Type: application/json
+Accept: application/json
+
+{
+  "title": "Whitespace Owner Test",
+  "description": "Owner contains only whitespace",
+  "documentType": "Contract",
+  "department": "Purchasing",
+  "owner": "   "
+}
+
+###
+
+
+### Create with unknown document type
+### Expected: 400 Bad Request
+POST {{DocuTrack.Api_HostAddress}}/api/documents
+Authorization: Bearer {{EmployeeToken}}
 Content-Type: application/json
 Accept: application/json
 
@@ -621,17 +368,16 @@ Accept: application/json
   "description": "Unknown document type",
   "documentType": "Unknown",
   "department": "Purchasing",
-  "owner": "Vaishnavi Bachhav"
+  "owner": "Test Employee"
 }
 
 ###
 
-### =========================================================
-### CREATE WITH UNKNOWN DEPARTMENT
-### Expected: 400 Bad Request
-### =========================================================
 
+### Create with unknown department
+### Expected: 400 Bad Request
 POST {{DocuTrack.Api_HostAddress}}/api/documents
+Authorization: Bearer {{EmployeeToken}}
 Content-Type: application/json
 Accept: application/json
 
@@ -640,74 +386,648 @@ Accept: application/json
   "description": "Unknown department",
   "documentType": "Contract",
   "department": "Unknown",
-  "owner": "Vaishnavi Bachhav"
-}
-
-
-### Register employee
-POST {{DocuTrack.Api_HostAddress}}/api/auth/register
-Content-Type: application/json
-Accept: application/json
-
-{
-  "fullName": "Test Employee",
-  "email": "employee@doctrack.com",
-  "password": "Employee@123"
+  "owner": "Test Employee"
 }
 
 ###
 
-### Duplicate registration
-### Expected: 409 Conflict
 
-POST {{DocuTrack.Api_HostAddress}}/api/auth/register
+### Create with invalid enum text
+### Expected: 400 Bad Request
+POST {{DocuTrack.Api_HostAddress}}/api/documents
+Authorization: Bearer {{EmployeeToken}}
 Content-Type: application/json
 Accept: application/json
 
 {
-  "fullName": "Test Employee",
-  "email": "employee@doctrack.com",
-  "password": "Employee@123"
+  "title": "Invalid Enum Test",
+  "description": "Invalid enum text",
+  "documentType": "NotAType",
+  "department": "Purchasing",
+  "owner": "Test Employee"
 }
 
 ###
 
-### Valid login
+
+### =========================================================
+### SEARCH, FILTERING, SORTING AND PAGINATION
+### Employee token required
+### =========================================================
+
+
+### Default search
 ### Expected: 200 OK
+GET {{DocuTrack.Api_HostAddress}}/api/documents
+Authorization: Bearer {{EmployeeToken}}
+Accept: application/json
 
-POST {{DocuTrack.Api_HostAddress}}/api/auth/login
+###
+
+
+### Page 1 with custom size
+### Expected: 200 OK
+GET {{DocuTrack.Api_HostAddress}}/api/documents?pageNumber=1&pageSize=5
+Authorization: Bearer {{EmployeeToken}}
+Accept: application/json
+
+###
+
+
+### Page 2
+### Expected: 200 OK
+GET {{DocuTrack.Api_HostAddress}}/api/documents?pageNumber=2&pageSize=5
+Authorization: Bearer {{EmployeeToken}}
+Accept: application/json
+
+###
+
+
+### Text search
+### Expected: 200 OK
+GET {{DocuTrack.Api_HostAddress}}/api/documents?search=supplier
+Authorization: Bearer {{EmployeeToken}}
+Accept: application/json
+
+###
+
+
+### Search by document number
+### Expected: 200 OK
+GET {{DocuTrack.Api_HostAddress}}/api/documents?search=DOC-000001
+Authorization: Bearer {{EmployeeToken}}
+Accept: application/json
+
+###
+
+
+### Owner filter
+### Expected: 200 OK
+GET {{DocuTrack.Api_HostAddress}}/api/documents?owner=Test
+Authorization: Bearer {{EmployeeToken}}
+Accept: application/json
+
+###
+
+
+### Status filter
+### Expected: 200 OK
+GET {{DocuTrack.Api_HostAddress}}/api/documents?status=Draft
+Authorization: Bearer {{EmployeeToken}}
+Accept: application/json
+
+###
+
+
+### Department filter
+### Expected: 200 OK
+GET {{DocuTrack.Api_HostAddress}}/api/documents?department=Purchasing
+Authorization: Bearer {{EmployeeToken}}
+Accept: application/json
+
+###
+
+
+### Combined status and department
+### Expected: 200 OK
+GET {{DocuTrack.Api_HostAddress}}/api/documents?status=Draft&department=Purchasing
+Authorization: Bearer {{EmployeeToken}}
+Accept: application/json
+
+###
+
+
+### Created-from filter
+### Expected: 200 OK
+GET {{DocuTrack.Api_HostAddress}}/api/documents?createdFrom=2026-01-01T00:00:00Z
+Authorization: Bearer {{EmployeeToken}}
+Accept: application/json
+
+###
+
+
+### Created-to filter
+### Expected: 200 OK
+GET {{DocuTrack.Api_HostAddress}}/api/documents?createdTo=2026-12-31T23:59:59Z
+Authorization: Bearer {{EmployeeToken}}
+Accept: application/json
+
+###
+
+
+### Created date range
+### Expected: 200 OK
+GET {{DocuTrack.Api_HostAddress}}/api/documents?createdFrom=2026-01-01T00:00:00Z&createdTo=2026-12-31T23:59:59Z
+Authorization: Bearer {{EmployeeToken}}
+Accept: application/json
+
+###
+
+
+### Sort by title ascending
+### Expected: 200 OK
+GET {{DocuTrack.Api_HostAddress}}/api/documents?sortBy=Title&sortDirection=Ascending
+Authorization: Bearer {{EmployeeToken}}
+Accept: application/json
+
+###
+
+
+### Sort by title descending
+### Expected: 200 OK
+GET {{DocuTrack.Api_HostAddress}}/api/documents?sortBy=Title&sortDirection=Descending
+Authorization: Bearer {{EmployeeToken}}
+Accept: application/json
+
+###
+
+
+### Sort by document number
+### Expected: 200 OK
+GET {{DocuTrack.Api_HostAddress}}/api/documents?sortBy=DocumentNumber&sortDirection=Ascending
+Authorization: Bearer {{EmployeeToken}}
+Accept: application/json
+
+###
+
+
+### Sort by owner
+### Expected: 200 OK
+GET {{DocuTrack.Api_HostAddress}}/api/documents?sortBy=Owner&sortDirection=Ascending
+Authorization: Bearer {{EmployeeToken}}
+Accept: application/json
+
+###
+
+
+### Sort by status
+### Expected: 200 OK
+GET {{DocuTrack.Api_HostAddress}}/api/documents?sortBy=Status&sortDirection=Ascending
+Authorization: Bearer {{EmployeeToken}}
+Accept: application/json
+
+###
+
+
+### Sort by last updated date
+### Expected: 200 OK
+GET {{DocuTrack.Api_HostAddress}}/api/documents?sortBy=LastUpdatedAt&sortDirection=Descending
+Authorization: Bearer {{EmployeeToken}}
+Accept: application/json
+
+###
+
+
+### Combined search, filter, sort and pagination
+### Expected: 200 OK
+GET {{DocuTrack.Api_HostAddress}}/api/documents?search=supplier&status=Draft&department=Purchasing&owner=Test&pageNumber=1&pageSize=10&sortBy=CreatedAt&sortDirection=Descending
+Authorization: Bearer {{EmployeeToken}}
+Accept: application/json
+
+###
+
+
+### Search with no matches
+### Expected: 200 OK with empty items and totalCount = 0
+GET {{DocuTrack.Api_HostAddress}}/api/documents?search=definitely-does-not-exist
+Authorization: Bearer {{EmployeeToken}}
+Accept: application/json
+
+###
+
+
+### Invalid page number
+### Expected: 400 Bad Request
+GET {{DocuTrack.Api_HostAddress}}/api/documents?pageNumber=0
+Authorization: Bearer {{EmployeeToken}}
+Accept: application/json
+
+###
+
+
+### Invalid negative page number
+### Expected: 400 Bad Request
+GET {{DocuTrack.Api_HostAddress}}/api/documents?pageNumber=-1
+Authorization: Bearer {{EmployeeToken}}
+Accept: application/json
+
+###
+
+
+### Invalid page size: zero
+### Expected: 400 Bad Request
+GET {{DocuTrack.Api_HostAddress}}/api/documents?pageSize=0
+Authorization: Bearer {{EmployeeToken}}
+Accept: application/json
+
+###
+
+
+### Invalid page size: greater than 100
+### Expected: 400 Bad Request
+GET {{DocuTrack.Api_HostAddress}}/api/documents?pageSize=101
+Authorization: Bearer {{EmployeeToken}}
+Accept: application/json
+
+###
+
+
+### Invalid date range
+### Expected: 400 Bad Request
+GET {{DocuTrack.Api_HostAddress}}/api/documents?createdFrom=2026-12-31T00:00:00Z&createdTo=2026-01-01T00:00:00Z
+Authorization: Bearer {{EmployeeToken}}
+Accept: application/json
+
+###
+
+
+### Unknown status filter
+### Expected: 400 Bad Request
+GET {{DocuTrack.Api_HostAddress}}/api/documents?status=Unknown
+Authorization: Bearer {{EmployeeToken}}
+Accept: application/json
+
+###
+
+
+### Unknown department filter
+### Expected: 400 Bad Request
+GET {{DocuTrack.Api_HostAddress}}/api/documents?department=Unknown
+Authorization: Bearer {{EmployeeToken}}
+Accept: application/json
+
+###
+
+
+### Invalid enum text
+### Expected: 400 Bad Request
+GET {{DocuTrack.Api_HostAddress}}/api/documents?status=NotAStatus
+Authorization: Bearer {{EmployeeToken}}
+Accept: application/json
+
+###
+
+
+### =========================================================
+### GET BY ID
+### =========================================================
+
+
+### Get existing document
+### Expected: 200 OK
+GET {{DocuTrack.Api_HostAddress}}/api/documents/{{DraftId}}
+Authorization: Bearer {{EmployeeToken}}
+Accept: application/json
+
+###
+
+
+### Get missing document
+### Expected: 404 Not Found
+GET {{DocuTrack.Api_HostAddress}}/api/documents/{{MissingId}}
+Authorization: Bearer {{EmployeeToken}}
+Accept: application/json
+
+###
+
+
+### =========================================================
+### UPDATE DOCUMENT
+### Employee token required
+### Current version is required for optimistic concurrency
+### =========================================================
+
+
+### Update valid document
+### Expected: 200 OK
+### Returned version should be current version + 1
+PUT {{DocuTrack.Api_HostAddress}}/api/documents/{{DraftId}}
+Authorization: Bearer {{EmployeeToken}}
 Content-Type: application/json
 Accept: application/json
 
 {
-  "email": "employee@doctrack.com",
-  "password": "Employee@123"
+  "title": "Updated Supplier Agreement",
+  "description": "Updated annual supplier agreement",
+  "documentType": "Contract",
+  "department": "Purchasing",
+  "owner": "Test Employee",
+  "version": {{DraftVersion}}
 }
 
 ###
 
-### Incorrect password
-### Expected: 401 Unauthorized
 
-POST {{DocuTrack.Api_HostAddress}}/api/auth/login
+### Update missing document
+### Expected: 404 Not Found
+PUT {{DocuTrack.Api_HostAddress}}/api/documents/{{MissingId}}
+Authorization: Bearer {{EmployeeToken}}
 Content-Type: application/json
 Accept: application/json
 
 {
-  "email": "employee@doctrack.com",
-  "password": "WrongPassword@123"
+  "title": "Missing Document",
+  "description": "This document does not exist",
+  "documentType": "Contract",
+  "department": "Purchasing",
+  "owner": "Test Employee",
+  "version": 1
 }
 
 ###
 
-### Unknown email
-### Expected: 401 Unauthorized
 
-POST {{DocuTrack.Api_HostAddress}}/api/auth/login
+### Update with whitespace owner
+### Expected: 400 Bad Request
+PUT {{DocuTrack.Api_HostAddress}}/api/documents/{{DraftId}}
+Authorization: Bearer {{EmployeeToken}}
 Content-Type: application/json
 Accept: application/json
 
 {
-  "email": "missing@doctrack.com",
-  "password": "Employee@123"
+  "title": "Valid Title",
+  "description": "Invalid owner test",
+  "documentType": "Contract",
+  "department": "Purchasing",
+  "owner": "   ",
+  "version": {{DraftVersion}}
 }
+
+###
+
+
+### Update with invalid version
+### Expected: 400 Bad Request
+PUT {{DocuTrack.Api_HostAddress}}/api/documents/{{DraftId}}
+Authorization: Bearer {{EmployeeToken}}
+Content-Type: application/json
+Accept: application/json
+
+{
+  "title": "Valid Title",
+  "description": "Invalid version test",
+  "documentType": "Contract",
+  "department": "Purchasing",
+  "owner": "Test Employee",
+  "version": 0
+}
+
+###
+
+
+### Update with stale version
+### Expected: 409 Conflict
+### First perform a successful update, then repeat using the old version.
+PUT {{DocuTrack.Api_HostAddress}}/api/documents/{{DraftId}}
+Authorization: Bearer {{EmployeeToken}}
+Content-Type: application/json
+Accept: application/json
+
+{
+  "title": "Stale Update",
+  "description": "Client is sending an old version",
+  "documentType": "Contract",
+  "department": "Purchasing",
+  "owner": "Test Employee",
+  "version": 1
+}
+
+###
+
+
+### =========================================================
+### STATUS WORKFLOW
+### Reviewer or Admin token required
+### Each request must send the document's current version
+### =========================================================
+
+
+### Draft to Uploaded
+### Expected: 200 OK
+PATCH {{DocuTrack.Api_HostAddress}}/api/documents/{{DraftId}}/status
+Authorization: Bearer {{ReviewerToken}}
+Content-Type: application/json
+Accept: application/json
+
+{
+  "newStatus": "Uploaded",
+  "version": {{DraftVersion}}
+}
+
+###
+
+
+### Uploaded to UnderReview
+### Expected: 200 OK
+PATCH {{DocuTrack.Api_HostAddress}}/api/documents/{{UploadedId}}/status
+Authorization: Bearer {{ReviewerToken}}
+Content-Type: application/json
+Accept: application/json
+
+{
+  "newStatus": "UnderReview",
+  "version": {{UploadedVersion}}
+}
+
+###
+
+
+### UnderReview to PendingApproval
+### Expected: 200 OK
+PATCH {{DocuTrack.Api_HostAddress}}/api/documents/{{UnderReviewId}}/status
+Authorization: Bearer {{ReviewerToken}}
+Content-Type: application/json
+Accept: application/json
+
+{
+  "newStatus": "PendingApproval",
+  "version": {{UnderReviewVersion}}
+}
+
+###
+
+
+### PendingApproval to Approved
+### Expected: 200 OK
+PATCH {{DocuTrack.Api_HostAddress}}/api/documents/{{PendingApprovalId}}/status
+Authorization: Bearer {{ReviewerToken}}
+Content-Type: application/json
+Accept: application/json
+
+{
+  "newStatus": "Approved",
+  "version": {{PendingApprovalVersion}}
+}
+
+###
+
+
+### PendingApproval to Rejected
+### Expected: 200 OK
+PATCH {{DocuTrack.Api_HostAddress}}/api/documents/{{PendingApprovalId}}/status
+Authorization: Bearer {{ReviewerToken}}
+Content-Type: application/json
+Accept: application/json
+
+{
+  "newStatus": "Rejected",
+  "version": {{PendingApprovalVersion}}
+}
+
+###
+
+
+### Rejected to Draft
+### Expected: 200 OK
+PATCH {{DocuTrack.Api_HostAddress}}/api/documents/{{RejectedId}}/status
+Authorization: Bearer {{ReviewerToken}}
+Content-Type: application/json
+Accept: application/json
+
+{
+  "newStatus": "Draft",
+  "version": {{RejectedVersion}}
+}
+
+###
+
+
+### Approved to Archived
+### Expected: 200 OK
+PATCH {{DocuTrack.Api_HostAddress}}/api/documents/{{ApprovedId}}/status
+Authorization: Bearer {{ReviewerToken}}
+Content-Type: application/json
+Accept: application/json
+
+{
+  "newStatus": "Archived",
+  "version": {{ApprovedVersion}}
+}
+
+###
+
+
+### Invalid transition: Draft to Approved
+### Expected: 409 Conflict
+PATCH {{DocuTrack.Api_HostAddress}}/api/documents/{{DraftId}}/status
+Authorization: Bearer {{ReviewerToken}}
+Content-Type: application/json
+Accept: application/json
+
+{
+  "newStatus": "Approved",
+  "version": {{DraftVersion}}
+}
+
+###
+
+
+### Unknown new status
+### Expected: 400 Bad Request
+PATCH {{DocuTrack.Api_HostAddress}}/api/documents/{{DraftId}}/status
+Authorization: Bearer {{ReviewerToken}}
+Content-Type: application/json
+Accept: application/json
+
+{
+  "newStatus": "Unknown",
+  "version": {{DraftVersion}}
+}
+
+###
+
+
+### Invalid status version
+### Expected: 400 Bad Request
+PATCH {{DocuTrack.Api_HostAddress}}/api/documents/{{DraftId}}/status
+Authorization: Bearer {{ReviewerToken}}
+Content-Type: application/json
+Accept: application/json
+
+{
+  "newStatus": "Uploaded",
+  "version": 0
+}
+
+###
+
+
+### Status change for missing document
+### Expected: 404 Not Found
+PATCH {{DocuTrack.Api_HostAddress}}/api/documents/{{MissingId}}/status
+Authorization: Bearer {{ReviewerToken}}
+Content-Type: application/json
+Accept: application/json
+
+{
+  "newStatus": "Uploaded",
+  "version": 1
+}
+
+###
+
+
+### Status change with stale version
+### Expected: 409 Conflict
+PATCH {{DocuTrack.Api_HostAddress}}/api/documents/{{UploadedId}}/status
+Authorization: Bearer {{ReviewerToken}}
+Content-Type: application/json
+Accept: application/json
+
+{
+  "newStatus": "UnderReview",
+  "version": 1
+}
+
+###
+
+
+### =========================================================
+### DELETE DOCUMENT
+### Admin token required
+### =========================================================
+
+
+### Delete Draft document
+### Expected: 204 No Content
+DELETE {{DocuTrack.Api_HostAddress}}/api/documents/{{DraftId}}
+Authorization: Bearer {{AdminToken}}
+Accept: application/json
+
+###
+
+
+### Delete Rejected document
+### Expected: 204 No Content
+DELETE {{DocuTrack.Api_HostAddress}}/api/documents/{{RejectedId}}
+Authorization: Bearer {{AdminToken}}
+Accept: application/json
+
+###
+
+
+### Delete Approved document
+### Expected: 409 Conflict
+DELETE {{DocuTrack.Api_HostAddress}}/api/documents/{{ApprovedId}}
+Authorization: Bearer {{AdminToken}}
+Accept: application/json
+
+###
+
+
+### Delete Archived document
+### Expected: 409 Conflict
+DELETE {{DocuTrack.Api_HostAddress}}/api/documents/{{ArchivedId}}
+Authorization: Bearer {{AdminToken}}
+Accept: application/json
+
+###
+
+
+### Delete missing document
+### Expected: 404 Not Found
+DELETE {{DocuTrack.Api_HostAddress}}/api/documents/{{MissingId}}
+Authorization: Bearer {{AdminToken}}
+Accept: application/json
+
+###

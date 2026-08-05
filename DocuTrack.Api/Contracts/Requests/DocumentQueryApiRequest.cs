@@ -1,4 +1,6 @@
-﻿using DocuTrack.Core.Enums;
+﻿
+using DocuTrack.Application.Documents.Queries;
+using DocuTrack.Domain.Documents;
 
 namespace DocuTrack.Api.Contracts.Requests
 {

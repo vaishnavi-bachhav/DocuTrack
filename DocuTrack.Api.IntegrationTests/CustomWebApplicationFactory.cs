@@ -1,5 +1,8 @@
 ﻿using DocuTrack.Api.IntegrationTests.Authentication;
-using DocuTrack.Core.Identity;
+using DocuTrack.Api.IntegrationTests.Database;
+using DocuTrack.Api.IntegrationTests.Transactions;
+using DocuTrack.Application.Abstractions.Authentication;
+using DocuTrack.Application.Abstractions.Persistence;
 using DocuTrack.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Hosting;
@@ -8,7 +11,6 @@ using Microsoft.AspNetCore.TestHost;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Storage;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 
@@ -18,37 +20,44 @@ public sealed class CustomWebApplicationFactory
     : WebApplicationFactory<Program>
 {
     private const string TestJwtKey =
-       "DocuTrack-Integration-Test-Key-12345678901234567890";
+        "DocuTrack-Integration-Test-JWT-Key-12345678901234567890";
 
     private readonly InMemoryDatabaseRoot _databaseRoot = new();
 
     private readonly string _databaseName =
-        $"DocuTrackTests-{Guid.NewGuid()}";
+        $"DocuTrackApiTests-{Guid.NewGuid()}";
 
     protected override void ConfigureWebHost(
         IWebHostBuilder builder)
     {
         builder.UseEnvironment("Testing");
 
-        builder.UseEnvironment("Testing");
-
-        // These keys must match JwtSettings properties exactly.
+        // Program.cs validates JWT settings during startup.
+        // The fake authentication handler is used for protected
+        // document endpoints, but valid JWT settings are still
+        // required to let the application start.
         builder.UseSetting(
             "Jwt:Issuer",
-            "DocuTrack.Tests");
+            "DocuTrack.Api.IntegrationTests");
 
         builder.UseSetting(
             "Jwt:Audience",
-            "DocuTrack.Tests");
+            "DocuTrack.Api.IntegrationTests");
 
         builder.UseSetting(
             "Jwt:Key",
             TestJwtKey);
 
+        builder.UseSetting(
+            "Jwt:ExpirationMinutes",
+            "60");
+
         builder.ConfigureTestServices(services =>
         {
             ReplaceDatabase(services);
             ReplaceAuthentication(services);
+            ReplaceDocumentNumberGenerator(services);
+            ReplaceIdentityTransactionFactory(services);
         });
     }
 
@@ -63,12 +72,6 @@ public sealed class CustomWebApplicationFactory
         services.RemoveAll<
             IDbContextOptionsConfiguration<
                 DocuTrackDbContext>>();
-
-        services.RemoveAll<IIdentityTransactionFactory>();
-
-        services.AddSingleton<
-            IIdentityTransactionFactory,
-            TestIdentityTransactionFactory>();
 
         services.AddDbContext<DocuTrackDbContext>(
             options =>
@@ -86,23 +89,43 @@ public sealed class CustomWebApplicationFactory
             .AddAuthentication(options =>
             {
                 options.DefaultScheme =
-                    TestAuthHandler.AuthenticationScheme;
+                    TestAuthHandler.SchemeName;
 
                 options.DefaultAuthenticateScheme =
-                    TestAuthHandler.AuthenticationScheme;
+                    TestAuthHandler.SchemeName;
 
                 options.DefaultChallengeScheme =
-                    TestAuthHandler.AuthenticationScheme;
+                    TestAuthHandler.SchemeName;
 
                 options.DefaultForbidScheme =
-                    TestAuthHandler.AuthenticationScheme;
+                    TestAuthHandler.SchemeName;
             })
             .AddScheme<
                 AuthenticationSchemeOptions,
                 TestAuthHandler>(
-                TestAuthHandler.AuthenticationScheme,
+                TestAuthHandler.SchemeName,
                 _ =>
                 {
                 });
+    }
+
+    private static void ReplaceDocumentNumberGenerator(
+        IServiceCollection services)
+    {
+        services.RemoveAll<IDocumentNumberGenerator>();
+
+        services.AddSingleton<
+            IDocumentNumberGenerator,
+            TestDocumentNumberGenerator>();
+    }
+
+    private static void ReplaceIdentityTransactionFactory(
+        IServiceCollection services)
+    {
+        services.RemoveAll<IIdentityTransactionFactory>();
+
+        services.AddSingleton<
+            IIdentityTransactionFactory,
+            TestIdentityTransactionFactory>();
     }
 }

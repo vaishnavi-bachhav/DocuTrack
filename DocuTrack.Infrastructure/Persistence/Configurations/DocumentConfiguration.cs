@@ -1,4 +1,4 @@
-﻿using DocuTrack.Core.Models;
+﻿using DocuTrack.Domain.Documents;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 

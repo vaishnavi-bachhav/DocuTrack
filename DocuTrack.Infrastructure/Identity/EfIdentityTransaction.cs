@@ -1,4 +1,4 @@
-﻿using DocuTrack.Core.Identity;
+﻿using DocuTrack.Application.Abstractions.Authentication;
 using Microsoft.EntityFrameworkCore.Storage;
 
 namespace DocuTrack.Infrastructure.Identity

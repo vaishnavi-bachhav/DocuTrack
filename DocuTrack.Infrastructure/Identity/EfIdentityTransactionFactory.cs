@@ -1,4 +1,4 @@
-﻿using DocuTrack.Core.Identity;
+﻿using DocuTrack.Application.Abstractions.Authentication;
 using DocuTrack.Infrastructure.Persistence;
 
 namespace DocuTrack.Infrastructure.Identity

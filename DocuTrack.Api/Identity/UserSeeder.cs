@@ -1,6 +1,6 @@
-﻿using Microsoft.AspNetCore.Identity;
+﻿using DocuTrack.Application.Authorization;
 using DocuTrack.Infrastructure.Identity;
-using DocuTrack.Core.Enums;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Options;
 
 namespace DocuTrack.Api.Identity
@@ -14,7 +14,7 @@ namespace DocuTrack.Api.Identity
             UserManager<ApplicationUser> userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
 
             SeedAdminSettings settings = scope.ServiceProvider.GetRequiredService<IOptions<SeedAdminSettings>>().Value;
-            
+
             if (string.IsNullOrWhiteSpace(settings.Email) ||
                 string.IsNullOrWhiteSpace(settings.Password))
             {
@@ -47,9 +47,9 @@ namespace DocuTrack.Api.Identity
                 }
             }
 
-            if (!await userManager.IsInRoleAsync(admin, UserRole.Admin.ToString()))
+            if (!await userManager.IsInRoleAsync(admin, ApplicationRoles.Admin))
             {
-                IdentityResult roleResult = await userManager.AddToRoleAsync(admin, UserRole.Admin.ToString());
+                IdentityResult roleResult = await userManager.AddToRoleAsync(admin, ApplicationRoles.Admin);
 
                 if (!roleResult.Succeeded)
                 {

@@ -1,11 +1,11 @@
-﻿using DocuTrack.Core.Enums;
-using DocuTrack.Core.Models;
-using DocuTrack.Core.Repositories;
-using DocuTrack.Core.Requests;
+﻿using DocuTrack.Application.Abstractions.Persistence;
+using DocuTrack.Application.Common;
+using DocuTrack.Application.Common.Exceptions;
+using DocuTrack.Application.Documents.Queries;
+using DocuTrack.Domain.Documents;
 using DocuTrack.Infrastructure.Persistence;
-using Microsoft.EntityFrameworkCore;
-using DocuTrack.Core.Exceptions;
 using Microsoft.Data.SqlClient;
+using Microsoft.EntityFrameworkCore;
 
 namespace DocuTrack.Infrastructure.Repositories
 {
@@ -20,55 +20,34 @@ namespace DocuTrack.Infrastructure.Repositories
         public async Task<Document> AddAsync(Document document, CancellationToken cancellationToken = default)
         {
             ArgumentNullException.ThrowIfNull(document);
-            await _context.Documents.AddAsync(document, cancellationToken);
+            await _context.Documents.AddAsync(document, cancellationToken); 
             await SaveChangesAsync(document.Id, cancellationToken);
             return document;
         }
 
         public async Task<Document?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
         {
-            return await _context.Documents.AsNoTracking().FirstOrDefaultAsync(d => d.Id == id, cancellationToken);
+            try
+            {
+                return await _context.Documents.AsNoTracking().FirstOrDefaultAsync(d => d.Id == id, cancellationToken);
+            }
+            catch (SqlException exception)
+           when (IsDatabaseUnavailable(exception))
+            {
+                throw new DatabaseUnavailableException(exception);
+            }
         }
 
         public async Task<Document?> GetByIdForUpdateAsync(Guid id, CancellationToken cancellationToken = default)
         {
-            return await _context.Documents.FirstOrDefaultAsync(d => d.Id == id, cancellationToken);
-        }
-
-        public async Task<long> GetNextDocumentNumberAsync(CancellationToken cancellationToken = default)
-        {
-            var connection = _context.Database.GetDbConnection();
-
-            bool shouldCloseConnection = connection.State != System.Data.ConnectionState.Open;
-
             try
             {
-                if (shouldCloseConnection)
-            {
-                await connection.OpenAsync(cancellationToken);
+                return await _context.Documents.FirstOrDefaultAsync(d => d.Id == id, cancellationToken);
             }
-            
-                await using var command = connection.CreateCommand();
-                command.CommandText = "SELECT NEXT VALUE FOR dbo.DocumentNumberSequence";
-
-                object? result = await command.ExecuteScalarAsync(cancellationToken);
-
-                if (result is null || result == DBNull.Value)
-                {
-                    throw new InvalidOperationException("Failed to retrieve the next document number from the database.");
-                }
-                return Convert.ToInt64(result);
-            }
-            catch(SqlException ex) when (IsDatabaseUnavailable(ex))
+            catch (SqlException exception)
+            when (IsDatabaseUnavailable(exception))
             {
-                throw new DatabaseUnavailableException(ex);
-            }
-            finally
-            {
-                if (shouldCloseConnection && connection.State == System.Data.ConnectionState.Open)
-                {
-                    await connection.CloseAsync();
-                }
+                throw new DatabaseUnavailableException(exception);
             }
         }
 
@@ -90,8 +69,46 @@ namespace DocuTrack.Infrastructure.Repositories
         public async Task<PagedResult<Document>> SearchAsync(DocumentQuery documentQuery, CancellationToken cancellationToken = default)
         {
             ArgumentNullException.ThrowIfNull(documentQuery);
-            IQueryable<Document> query = _context.Documents.AsNoTracking();
+            try
+            {
+                IQueryable<Document> query = _context.Documents.AsNoTracking();
+                
+                query = ApplyFilters(documentQuery, query);
 
+                // Total records before pagination
+                int totalCount = await query.CountAsync(cancellationToken);
+
+                // Sorting
+                query = ApplySorting(documentQuery, query);
+
+                // Pagination
+                List<Document> documents = await query
+                    .Skip((documentQuery.PageNumber - 1) * documentQuery.PageSize)
+                    .Take(documentQuery.PageSize)
+                    .ToListAsync(cancellationToken);
+
+                int totalPages = (int)Math.Ceiling((double)totalCount / documentQuery.PageSize);
+
+                return new PagedResult<Document>
+                {
+                    Items = documents,
+                    PageNumber = documentQuery.PageNumber,
+                    PageSize = documentQuery.PageSize,
+                    TotalCount = totalCount,
+                    TotalPages = totalPages,
+                    HasPreviousPage = documentQuery.PageNumber > 1,
+                    HasNextPage = documentQuery.PageNumber < totalPages
+                };
+            }
+            catch (SqlException exception)
+           when (IsDatabaseUnavailable(exception))
+            {
+                throw new DatabaseUnavailableException(exception);
+            }
+        }
+
+        private static IQueryable<Document> ApplyFilters(DocumentQuery documentQuery, IQueryable<Document> query)
+        {
             // Search
             if (!string.IsNullOrWhiteSpace(documentQuery.Search))
             {
@@ -134,36 +151,13 @@ namespace DocuTrack.Infrastructure.Repositories
                 query = query.Where(d => d.CreatedAt <= documentQuery.CreatedTo.Value);
             }
 
-            // Total records before pagination
-            int totalCount = await query.CountAsync(cancellationToken);
-
-            // Sorting
-            query = ApplySorting(documentQuery, query);
-
-            // Pagination
-            List<Document> documents = await query
-                .Skip((documentQuery.PageNumber - 1) * documentQuery.PageSize)
-                .Take(documentQuery.PageSize)
-                .ToListAsync(cancellationToken);
-
-            int totalPages = (int)Math.Ceiling((double)totalCount / documentQuery.PageSize);
-
-            return new PagedResult<Document>
-            {
-                Items = documents,
-                PageNumber = documentQuery.PageNumber,
-                PageSize = documentQuery.PageSize,
-                TotalCount = totalCount,
-                TotalPages = totalPages,
-                HasPreviousPage = documentQuery.PageNumber > 1,
-                HasNextPage = documentQuery.PageNumber < totalPages
-            };
+            return query;
         }
 
         public void SetOriginalVersion(Document document, int originalVersion)
         {
             ArgumentNullException.ThrowIfNull(document);
-            _context.Entry(document).Property(p => p.Version).OriginalValue = originalVersion;    
+            _context.Entry(document).Property(p => p.Version).OriginalValue = originalVersion;
         }
 
         private static IQueryable<Document> ApplySorting(DocumentQuery documentQuery, IQueryable<Document> query)

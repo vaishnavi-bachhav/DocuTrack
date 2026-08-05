@@ -1,4 +1,5 @@
-﻿using DocuTrack.Core.Exceptions;
+﻿using DocuTrack.Application.Common.Exceptions;
+using DocuTrack.Domain.Documents.Exceptions;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -54,7 +55,7 @@ namespace DocuTrack.Api.ExceptionHandling
                         deletionException.Message,
                         "https://httpstatuses.com/409"),
 
-                DomainValidationException validationException =>
+                UseCaseValidationException validationException =>
                     CreateProblemDetails(
                         StatusCodes.Status400BadRequest,
                         "Validation failed",
@@ -128,7 +129,7 @@ namespace DocuTrack.Api.ExceptionHandling
             switch (exception)
             {
                 case DocumentNotFoundException:
-                case DomainValidationException:
+                case UseCaseValidationException:
                     _logger.LogInformation(
                         exception,
                         "Request rejected for {Method} {Path}",

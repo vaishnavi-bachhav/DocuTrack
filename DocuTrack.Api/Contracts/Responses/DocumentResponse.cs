@@ -1,4 +1,4 @@
-﻿using DocuTrack.Core.Enums;
+﻿using DocuTrack.Domain.Documents;
 
 namespace DocuTrack.Api.Contracts.Responses
 {

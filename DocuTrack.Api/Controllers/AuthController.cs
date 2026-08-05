@@ -1,10 +1,14 @@
 ﻿using DocuTrack.Api.Contracts.Requests;
 using DocuTrack.Api.Contracts.Responses;
-using DocuTrack.Api.Identity;
+using DocuTrack.Api.Mappings;
+using DocuTrack.Application.Abstractions.Authentication;
+using DocuTrack.Application.Authentication.Results;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace DocuTrack.Api.Controllers
 {
+    [AllowAnonymous]
     [Route("api/[controller]")]
     [ApiController]
     public class AuthController : ControllerBase
@@ -13,23 +17,23 @@ namespace DocuTrack.Api.Controllers
 
         public AuthController(IAuthenticationService authenticationService)
         {
-            _authenticationService = authenticationService;
+            _authenticationService = authenticationService
+                ?? throw new ArgumentNullException(
+                    nameof(authenticationService));
         }
 
         [HttpPost("register")]
         public async Task<ActionResult<AuthenticationResponse>> Register([FromBody] RegisterApiRequest request, CancellationToken cancellationToken)
         {
-            AuthenticationResponse response = await _authenticationService.RegisterAsync(request, cancellationToken);
-
-            return StatusCode(StatusCodes.Status201Created, response);
+            AuthenticationResult result = await _authenticationService.RegisterAsync(request.ToCommand(), cancellationToken);
+            return StatusCode(StatusCodes.Status201Created, result.ToResponse());
         }
 
         [HttpPost("login")]
         public async Task<ActionResult<AuthenticationResponse>> Login([FromBody] LoginApiRequest request, CancellationToken cancellationToken)
         {
-            AuthenticationResponse response = await _authenticationService.LoginAsync(request, cancellationToken);
-
-            return Ok(response);
+            AuthenticationResult result = await _authenticationService.LoginAsync(request.ToCommand(), cancellationToken);
+            return Ok(result.ToResponse());
         }
     }
 }
