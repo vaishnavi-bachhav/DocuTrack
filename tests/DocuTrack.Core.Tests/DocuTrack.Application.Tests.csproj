@@ -18,8 +18,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\DocuTrack.Application\DocuTrack.Application.csproj" />
-    <ProjectReference Include="..\DocuTrack.Domain\DocuTrack.Domain.csproj" />
+    <ProjectReference Include="..\..\src\DocuTrack.Application\DocuTrack.Application.csproj" />
+    <ProjectReference Include="..\..\src\DocuTrack.Domain\DocuTrack.Domain.csproj" />
   </ItemGroup>
 
   <ItemGroup>

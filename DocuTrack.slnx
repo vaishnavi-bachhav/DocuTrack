@@ -1,14 +1,14 @@
 <Solution>
   <Folder Name="/src/">
-    <Project Path="DocuTrack.Api/DocuTrack.Api.csproj" Id="20f955b4-b7f7-4131-8769-c000b884a49e" />
-    <Project Path="DocuTrack.Application/DocuTrack.Application.csproj" Id="361a4263-468d-44db-955a-97cfbbc7c81e" />
-    <Project Path="DocuTrack.Domain/DocuTrack.Domain.csproj" Id="a55abefa-d783-4390-b89f-2671123d8fc7" />
-    <Project Path="DocuTrack.Infrastructure/DocuTrack.Infrastructure.csproj" Id="66889e53-e9f5-43e6-96fe-ed4b4b0166c2" />
+    <Project Path="src/DocuTrack.Api/DocuTrack.Api.csproj" />
+    <Project Path="src/DocuTrack.Application/DocuTrack.Application.csproj" />
+    <Project Path="src/DocuTrack.Domain/DocuTrack.Domain.csproj" />
+    <Project Path="src/DocuTrack.Infrastructure/DocuTrack.Infrastructure.csproj" />
   </Folder>
   <Folder Name="/tests/">
-    <Project Path="DocuTrack.Api.IntegrationTests/DocuTrack.Api.IntegrationTests.csproj" Id="8ec9d9a7-a851-451c-922f-0e2e6f255769" />
-    <Project Path="DocuTrack.Core.Tests/DocuTrack.Application.Tests.csproj" Id="26b57668-c03a-4d51-b75e-696d49bf990d" />
-    <Project Path="DocuTrack.Domain.Tests/DocuTrack.Domain.Tests.csproj" Id="47648a55-fe77-442c-b9d4-d5d1f0088df0" />
-    <Project Path="DocuTrack.Infrastructure.IntegrationTests/DocuTrack.Infrastructure.IntegrationTests.csproj" Id="7312bc58-bc2f-4336-bc77-cf11316b5956" />
+    <Project Path="tests/DocuTrack.Api.IntegrationTests/DocuTrack.Api.IntegrationTests.csproj" />
+    <Project Path="tests/DocuTrack.Core.Tests/DocuTrack.Application.Tests.csproj" />
+    <Project Path="tests/DocuTrack.Domain.Tests/DocuTrack.Domain.Tests.csproj" />
+    <Project Path="tests/DocuTrack.Infrastructure.IntegrationTests/DocuTrack.Infrastructure.IntegrationTests.csproj" />
   </Folder>
 </Solution>
