@@ -1,10 +1,12 @@
 ﻿using DocuTrack.Api.Contracts.Requests;
 using DocuTrack.Api.Contracts.Responses;
+using DocuTrack.Api.DependencyInjection;
 using DocuTrack.Api.Mappings;
 using DocuTrack.Application.Abstractions.Authentication;
 using DocuTrack.Application.Authentication.Results;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace DocuTrack.Api.Controllers
 {
@@ -22,6 +24,7 @@ namespace DocuTrack.Api.Controllers
                     nameof(authenticationService));
         }
 
+        [EnableRateLimiting(RateLimitingExtensions.RegistrationPolicy)]
         [HttpPost("register")]
         public async Task<ActionResult<AuthenticationResponse>> Register([FromBody] RegisterApiRequest request, CancellationToken cancellationToken)
         {
@@ -29,6 +32,7 @@ namespace DocuTrack.Api.Controllers
             return StatusCode(StatusCodes.Status201Created, result.ToResponse());
         }
 
+        [EnableRateLimiting(RateLimitingExtensions.LoginPolicy)]
         [HttpPost("login")]
         public async Task<ActionResult<AuthenticationResponse>> Login([FromBody] LoginApiRequest request, CancellationToken cancellationToken)
         {
@@ -37,6 +41,7 @@ namespace DocuTrack.Api.Controllers
         }
 
         [AllowAnonymous]
+        [EnableRateLimiting(RateLimitingExtensions.RefreshPolicy)]
         [HttpPost("refresh")]
         public async Task<ActionResult<AuthenticationResponse>> Refresh([FromBody] RefreshTokenApiRequest request, CancellationToken cancellationToken)
         {

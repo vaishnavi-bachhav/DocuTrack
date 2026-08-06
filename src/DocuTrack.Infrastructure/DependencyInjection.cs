@@ -33,6 +33,8 @@ public static class DependencyInjection
 
         AddJwtOptions(services, configuration);
 
+        AddHealthChecks(services);
+
         services.AddScoped<IDocumentRepository, EfDocumentRepository>();
 
         services.AddScoped<IDocumentNumberGenerator, SqlDocumentNumberGenerator>();
@@ -81,6 +83,19 @@ public static class DependencyInjection
                             errorNumbersToAdd: null);
                     });
             });
+    }
+
+    private static void AddHealthChecks(
+    IServiceCollection services)
+    {
+        services
+            .AddHealthChecks()
+            .AddDbContextCheck<DocuTrackDbContext>(
+                name: "sql-server",
+                failureStatus:
+                    Microsoft.Extensions.Diagnostics
+                        .HealthChecks.HealthStatus.Unhealthy,
+                tags: ["ready", "database"]);
     }
 
     private static void AddIdentity(

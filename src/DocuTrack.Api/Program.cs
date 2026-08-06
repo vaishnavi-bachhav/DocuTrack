@@ -1,10 +1,12 @@
-using System.Text.Json.Serialization;
 using DocuTrack.Api.DependencyInjection;
 using DocuTrack.Api.ExceptionHandling;
+using DocuTrack.Api.HealthChecks;
 using DocuTrack.Api.Identity;
 using DocuTrack.Application;
 using DocuTrack.Application.Abstractions.Authorization;
 using DocuTrack.Infrastructure;
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
+using System.Text.Json.Serialization;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -40,6 +42,7 @@ builder.Services.AddInfrastructure(
     builder.Configuration,
     builder.Environment);
 
+builder.Services.AddApiRateLimiting();
 // ---------------------------------------------------------
 // Authentication and authorization
 // ---------------------------------------------------------
@@ -108,8 +111,31 @@ app.UseHttpsRedirection();
 app.UseAuthentication();
 
 app.UseAuthorization();
+app.UseRateLimiter();
 
 app.MapControllers();
+
+app.MapHealthChecks(
+    "/health/live",
+    new HealthCheckOptions
+    {
+        // No dependency checks; process is alive.
+        Predicate = _ => false,
+        ResponseWriter =
+            HealthCheckResponseWriter.WriteResponseAsync
+    })
+    .AllowAnonymous();
+
+app.MapHealthChecks(
+    "/health/ready",
+    new HealthCheckOptions
+    {
+        Predicate = registration =>
+            registration.Tags.Contains("ready"),
+        ResponseWriter =
+            HealthCheckResponseWriter.WriteResponseAsync
+    })
+    .AllowAnonymous();
 
 app.Run();
 
