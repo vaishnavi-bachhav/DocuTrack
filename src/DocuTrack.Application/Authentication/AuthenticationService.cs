@@ -11,14 +11,16 @@ namespace DocuTrack.Application.Authentication
         private readonly IIdentityService _identityService;
         private readonly IJwtTokenGenerator _jwtTokenGenerator;
         private readonly IIdentityTransactionFactory _transactionFactory;
-
+        private readonly IRefreshTokenService _refreshTokenService;
         public AuthenticationService(IIdentityService identityService,
             IJwtTokenGenerator jwtTokenGenerator,
-            IIdentityTransactionFactory transactionFactory)
+            IIdentityTransactionFactory transactionFactory,
+            IRefreshTokenService refreshTokenService)
         {
             _identityService = identityService ?? throw new ArgumentNullException(nameof(identityService));
             _jwtTokenGenerator = jwtTokenGenerator ?? throw new ArgumentNullException(nameof(jwtTokenGenerator));
             _transactionFactory = transactionFactory ?? throw new ArgumentNullException(nameof(transactionFactory));
+            _refreshTokenService = refreshTokenService ?? throw new ArgumentNullException(nameof(refreshTokenService));
         }
 
         public async Task<AuthenticationResult> RegisterAsync(RegisterUserCommand command, CancellationToken cancellationToken = default)
@@ -31,7 +33,7 @@ namespace DocuTrack.Application.Authentication
 
             ValidateRegistrationCommand(fullName, email, command.Password);
 
-            IdentityUserResult? existingUser = await _identityService.FindByEmailAsync(email);
+            IdentityUserResult? existingUser = await _identityService.FindByEmailAsync(email, cancellationToken);
 
             if (existingUser is not null)
             {
@@ -48,11 +50,25 @@ namespace DocuTrack.Application.Authentication
 
                 await _identityService.AddToRoleAsync(user.UserId, ApplicationRoles.Employee, cancellationToken);
 
-                await transaction.CommitAsync(cancellationToken);
-
                 IReadOnlyCollection<string> roles = await _identityService.GetRolesAsync(user.UserId, cancellationToken);
 
-                return _jwtTokenGenerator.Generate(user, roles);
+                AccessTokenResult accessToken = _jwtTokenGenerator.GenerateAccessToken(user, roles);
+
+                IssuedRefreshToken refreshToken = await _refreshTokenService.IssueAsync(user.UserId, cancellationToken : cancellationToken);
+
+                await transaction.CommitAsync(cancellationToken);
+
+                return new AuthenticationResult
+                {
+                    AccessToken = accessToken.Token,
+                    AccessTokenExpiresAt = accessToken.ExpiresAt,
+                    RefreshToken = refreshToken.RawToken,
+                    RefreshTokenExpiresAt = refreshToken.ExpiresAt,
+                    UserId = user.UserId,
+                    Email = user.Email,
+                    FullName = user.FullName,
+                    Roles = roles
+                };
             }
             catch (Exception)
             {
@@ -88,19 +104,60 @@ namespace DocuTrack.Application.Authentication
                 throw new AccountLockedException();
             }
 
-            if (passwordCheckResult.IsNotAllowed)
-            {
-                throw new AuthenticationFailedException();
-            }
-
-            if (!passwordCheckResult.Succeeded)
+            if (!passwordCheckResult.Succeeded ||
+       passwordCheckResult.IsNotAllowed)
             {
                 throw new AuthenticationFailedException();
             }
 
             IReadOnlyCollection<string> roles = await _identityService.GetRolesAsync(user.UserId, cancellationToken);
 
-            return _jwtTokenGenerator.Generate(user, roles);
+            AccessTokenResult tokenResult = _jwtTokenGenerator.GenerateAccessToken(user, roles);
+
+            IssuedRefreshToken refreshToken = await _refreshTokenService.IssueAsync(user.UserId, cancellationToken : cancellationToken);
+
+            return new AuthenticationResult
+            {
+                AccessToken = tokenResult.Token,
+                AccessTokenExpiresAt = tokenResult.ExpiresAt,
+                RefreshToken = refreshToken.RawToken,
+                RefreshTokenExpiresAt = refreshToken.ExpiresAt,
+                UserId = user.UserId,
+                Email = user.Email,
+                FullName = user.FullName,
+                Roles = roles,
+            };
+        }
+
+        public async Task<AuthenticationResult> RefreshAsync(RefreshTokenCommand command, CancellationToken cancellationToken = default)
+        {
+            ArgumentNullException.ThrowIfNull(command);
+            RefreshTokenRotationResult rotation = await _refreshTokenService.RotateAsync(command.RefreshToken, cancellationToken);
+
+            IdentityUserResult user = await _identityService.GetUserByIdAsync(rotation.UserId, cancellationToken);
+
+            IReadOnlyCollection<string> roles = await _identityService.GetRolesAsync(user.
+                UserId, cancellationToken);
+
+            AccessTokenResult accessToken = _jwtTokenGenerator.GenerateAccessToken(user, roles);
+
+            return new AuthenticationResult
+            {
+                AccessToken = accessToken.Token,
+                AccessTokenExpiresAt = accessToken.ExpiresAt,
+                RefreshToken = rotation.NewToken.RawToken,
+                RefreshTokenExpiresAt = rotation.NewToken.ExpiresAt,
+                UserId = user.UserId,
+                Email = user.Email,
+                FullName = user.FullName,
+                Roles = roles
+            };
+        }
+
+        public async Task RevokeAsync(RevokeRefreshTokenCommand command, CancellationToken cancellationToken = default)
+        {
+            ArgumentNullException.ThrowIfNull(command);
+            await _refreshTokenService.RevokeAsync(command.RefreshToken, "" ,cancellationToken : cancellationToken);
         }
 
         private static void ValidateRegistrationCommand(string fullName, string email, string password)

@@ -35,25 +35,17 @@ public static class DependencyInjection
 
         services.AddScoped<IDocumentRepository, EfDocumentRepository>();
 
-        services.AddScoped<
-            IDocumentNumberGenerator,
-            SqlDocumentNumberGenerator>();
+        services.AddScoped<IDocumentNumberGenerator, SqlDocumentNumberGenerator>();
 
-        services.AddScoped<
-            IIdentityService,
-            IdentityService>();
+        services.AddScoped<IIdentityService, IdentityService>();
 
-        services.AddScoped<
-            IIdentityTransactionFactory,
-            EfIdentityTransactionFactory>();
+        services.AddScoped<IIdentityTransactionFactory, EfIdentityTransactionFactory>();
 
-        services.AddScoped<
-            IJwtTokenGenerator,
-            JwtTokenGenerator>();
+        services.AddScoped<IJwtTokenGenerator, JwtTokenGenerator>();
 
-        services.AddSingleton<
-            IClock,
-            SystemClock>();
+        services.AddScoped<IRefreshTokenService, RefreshTokenService>();
+
+        services.AddSingleton<IClock, SystemClock>();
 
         return services;
     }

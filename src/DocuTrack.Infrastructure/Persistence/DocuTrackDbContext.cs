@@ -14,6 +14,8 @@ namespace DocuTrack.Infrastructure.Persistence
 
         public DbSet<Document> Documents => Set<Document>();
 
+        public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
+
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             ArgumentNullException.ThrowIfNull(modelBuilder);

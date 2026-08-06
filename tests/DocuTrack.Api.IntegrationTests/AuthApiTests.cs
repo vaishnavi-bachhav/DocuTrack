@@ -5,8 +5,6 @@ using DocuTrack.Infrastructure.Persistence;
 using FluentAssertions;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using System.Net;
 using System.Net.Http.Json;
@@ -192,7 +190,7 @@ public sealed class AuthApiTests
             .NotBeNullOrWhiteSpace();
 
         body.Email.Should().Be(email);
-        body.ExpiresAt.Should()
+        body.AccessTokenExpiresAt.Should()
             .BeAfter(DateTimeOffset.UtcNow);
     }
 
@@ -522,5 +520,5 @@ public sealed class AuthApiTests
 
         return options;
     }
-    
+
 }

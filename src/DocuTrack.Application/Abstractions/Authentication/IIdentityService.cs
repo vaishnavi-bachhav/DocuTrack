@@ -9,5 +9,6 @@ namespace DocuTrack.Application.Abstractions.Authentication
         Task AddToRoleAsync(Guid userId, string role, CancellationToken cancellationToken = default);
         Task<PasswordCheckResult> CheckPasswordAsync(Guid userId, string password, bool lockoutOnFailure, CancellationToken cancellationToken = default);
         Task<IReadOnlyCollection<string>> GetRolesAsync(Guid userId, CancellationToken cancellationToken = default);
+        Task<IdentityUserResult> GetUserByIdAsync(Guid userId, CancellationToken cancellationToken = default);
     }
 }

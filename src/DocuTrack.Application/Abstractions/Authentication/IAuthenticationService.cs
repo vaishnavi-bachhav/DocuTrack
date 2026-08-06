@@ -7,5 +7,7 @@ namespace DocuTrack.Application.Abstractions.Authentication
     {
         Task<AuthenticationResult> LoginAsync(LoginCommand command, CancellationToken cancellationToken = default);
         Task<AuthenticationResult> RegisterAsync(RegisterUserCommand command, CancellationToken cancellationToken = default);
+        Task<AuthenticationResult> RefreshAsync(RefreshTokenCommand command, CancellationToken cancellationToken = default);
+        Task RevokeAsync(RevokeRefreshTokenCommand command, CancellationToken cancellationToken = default);
     }
 }

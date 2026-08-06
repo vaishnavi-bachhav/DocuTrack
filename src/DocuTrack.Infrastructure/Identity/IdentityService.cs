@@ -126,6 +126,18 @@ namespace DocuTrack.Infrastructure.Identity
             return roles.ToArray();
         }
 
+        public async Task<IdentityUserResult> GetUserByIdAsync(
+            Guid userId,
+            CancellationToken cancellationToken = default)
+        {
+            ApplicationUser user =
+                await GetUserAsync(
+                    userId,
+                    cancellationToken);
+
+            return MapUser(user);
+        }
+
         private async Task<ApplicationUser> GetUserAsync(
         Guid userId,
         CancellationToken cancellationToken)
@@ -139,6 +151,8 @@ namespace DocuTrack.Infrastructure.Identity
             return user
                 ?? throw new AuthenticationFailedException();
         }
+
+
 
         private static IdentityUserResult MapUser(
         ApplicationUser user)

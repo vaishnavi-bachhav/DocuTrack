@@ -32,6 +32,26 @@ namespace DocuTrack.Api.Mappings
             };
         }
 
+        public static RefreshTokenCommand ToCommand(
+            this RefreshTokenApiRequest request)
+        {
+            ArgumentNullException.ThrowIfNull(request);
+            return new RefreshTokenCommand
+            {
+                RefreshToken = request.RefreshToken
+            };
+        }
+
+        public static RevokeRefreshTokenCommand ToCommand(
+            this RevokeRefreshTokenApiRequest request)
+        {
+            ArgumentNullException.ThrowIfNull(request);
+            return new RevokeRefreshTokenCommand
+            {
+                RefreshToken = request.RefreshToken
+            };
+        }
+
         public static AuthenticationResponse ToResponse(
         this AuthenticationResult result)
         {
@@ -40,7 +60,9 @@ namespace DocuTrack.Api.Mappings
             return new AuthenticationResponse
             {
                 AccessToken = result.AccessToken,
-                ExpiresAt = result.ExpiresAt,
+                AccessTokenExpiresAt = result.AccessTokenExpiresAt,
+                RefreshToken = result.RefreshToken,
+                RefreshTokenExpiresAt = result.RefreshTokenExpiresAt,
                 UserId = result.UserId,
                 Email = result.Email,
                 FullName = result.FullName,

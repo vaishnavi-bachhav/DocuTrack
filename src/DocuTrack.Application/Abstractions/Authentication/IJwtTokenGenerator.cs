@@ -4,7 +4,7 @@ namespace DocuTrack.Application.Abstractions.Authentication
 {
     public interface IJwtTokenGenerator
     {
-        AuthenticationResult Generate(
+        AccessTokenResult GenerateAccessToken(
         IdentityUserResult user,
         IReadOnlyCollection<string> roles);
     }

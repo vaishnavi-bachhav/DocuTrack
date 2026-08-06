@@ -35,5 +35,20 @@ namespace DocuTrack.Api.Controllers
             AuthenticationResult result = await _authenticationService.LoginAsync(request.ToCommand(), cancellationToken);
             return Ok(result.ToResponse());
         }
+
+        [AllowAnonymous]
+        [HttpPost("refresh")]
+        public async Task<ActionResult<AuthenticationResponse>> Refresh([FromBody] RefreshTokenApiRequest request, CancellationToken cancellationToken)
+        {
+            AuthenticationResult result = await _authenticationService.RefreshAsync(request.ToCommand(), cancellationToken);
+            return Ok(result.ToResponse());
+        }
+
+        [HttpPost("logout")]
+        public async Task<IActionResult> Logout([FromBody] RevokeRefreshTokenApiRequest request, CancellationToken cancellationToken)
+        {
+            await _authenticationService.RevokeAsync(request.ToCommand(), cancellationToken);
+            return NoContent();
+        }
     }
 }
